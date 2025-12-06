@@ -1,35 +1,51 @@
 import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # ==========================================
-    # [설정 영역] 나중에 팀원들에게 받아서 이 부분만 수정하세요!
-    # ==========================================
+    # =========================================================
+    # 1. [심소진 패키지 실행] Smart Hospital System 
+    # =========================================================
     
-    # 1. GUI 팀 정보
-    GUI_PKG_NAME  = 'unknown_gui_pkg'   # 예: 'face_gui'
-    GUI_EXEC_NAME = 'unknown_gui_node'  # 예: 'gui_main'
-
-    # 2. TTS 팀 정보
-    TTS_PKG_NAME  = 'unknown_tts_pkg'   # 예: 'voice_tts'
-    TTS_EXEC_NAME = 'unknown_tts_node'  # 예: 'tts_main'
+    # 패키지 경로 찾기
+    hospital_pkg_name = 'smart_hospital_system'
+    hospital_pkg_dir = get_package_share_directory(hospital_pkg_name)
     
-    # ==========================================
-    # [실행 영역] 아래 코드는 수정할 필요 없습니다.
-    # ==========================================
+    # 런치 파일 경로 설정
+    hospital_launch_file = os.path.join(hospital_pkg_dir, 'launch', 'hospital_system.launch.py')
 
-    # GUI 노드 정의 (이름이 틀려도 실행 시도하도록 설정)
+    # 실행 객체 생성 (Include)
+    hospital_system_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(hospital_launch_file)
+    )
+
+    # =========================================================
+    # 2. [팀원 패키지 설정] 나중에 패키지/노드 이름만 수정하세요!
+    # =========================================================
+    
+    # 2-1. GUI 팀 정보
+    GUI_PKG_NAME  = 'unknown_gui_pkg'   # 나중에 실제 패키지 명으로 수정
+    GUI_EXEC_NAME = 'unknown_gui_node'  # 나중에 실제 실행 파일 명으로 수정
+
+    # 2-2. TTS 팀 정보
+    TTS_PKG_NAME  = 'unknown_tts_pkg'   # 나중에 실제 패키지 명으로 수정
+    TTS_EXEC_NAME = 'unknown_tts_node'  # 나중에 실제 실행 파일 명으로 수정
+
+    # =========================================================
+    # 3. [팀원 노드 정의] 수정할 필요 없습니다.
+    # =========================================================
+
     gui_node = Node(
         package    = GUI_PKG_NAME,
         executable = GUI_EXEC_NAME,
         name       = 'gui_node',
         output     = 'screen',
-        # 패키지가 없어도 일단 런치 파일이 죽지 않고 경고만 뜨게 하려면 아래 옵션 고려 가능
-        # condition=IfCondition(...) 복잡해지니 일단 생략
     )
 
-    # TTS 노드 정의
     tts_node = Node(
         package    = TTS_PKG_NAME,
         executable = TTS_EXEC_NAME,
@@ -37,7 +53,19 @@ def generate_launch_description():
         output     = 'screen'
     )
 
-    return LaunchDescription([
-        gui_node,
-        tts_node
-    ])
+    # =========================================================
+    # 4. [최종 실행 목록] LaunchDescription 리턴
+    # =========================================================
+    
+    ld = LaunchDescription()
+
+    # (1) 내 병원 시스템은 무조건 실행
+    ld.add_action(hospital_system_launch)
+
+    # (2) 팀원들 노드는 패키지가 존재할 때만 주석을 풀어서 사용하세요!
+    # 지금 'unknown_pkg'인 상태로 아래 주석을 풀면 에러가 나서 내꺼도 실행이 안 됩니다.
+    
+    # ld.add_action(gui_node)  # <--- 패키지 받으면 주석 해제
+    # ld.add_action(tts_node)  # <--- 패키지 받으면 주석 해제
+
+    return ld
