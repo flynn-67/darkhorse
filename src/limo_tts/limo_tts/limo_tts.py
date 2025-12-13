@@ -21,7 +21,7 @@ class TextToSpeechNode(Node):
         #엑션 서버로 변경
         self._action_server = ActionServer(
             self,
-              String,
+              Speak,
             'speak_text',
             self.execute_callback)
 
