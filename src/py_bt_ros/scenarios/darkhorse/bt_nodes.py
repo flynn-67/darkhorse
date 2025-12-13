@@ -1,8 +1,10 @@
 import math
 import json
-from modules.base_bt_nodes import BTNodeList, Status, Action, Node
-from modules.base_bt_nodes_ros import ActionWithROSAction, ActionWithROSTopics
-
+from modules.base_bt_nodes import (
+    BTNodeList, Status, SyncAction, Node, 
+    Sequence, Fallback, ReactiveSequence, ReactiveFallback, Parallel,
+)
+from modules.base_bt_nodes_ros import ActionWithROSAction, ConditionWithROSTopics
 # ROS 2 Messages
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String, Bool
@@ -23,7 +25,7 @@ DEPARTMENT_COORDINATES = {
 # ---------------------------------------------------------
 # 1. WaitForQR: QR(JotForm) 데이터 수신 및 경로 계획
 # ---------------------------------------------------------
-class WaitForQR(ActionWithROSTopics):
+class WaitForQR(ConditionWithROSTopics):
     """
     JotForm 데이터(/hospital/patient_data)를 기다림.
     데이터 포맷 예시(JSON string): {"patient_id": "123", "departments": ["내과", "영상의학과"]}
@@ -73,7 +75,7 @@ class WaitForQR(ActionWithROSTopics):
 # ---------------------------------------------------------
 # 2. Think: 다음 목적지 결정 (Iterator 역할)
 # ---------------------------------------------------------
-class Think(Action):
+class Think(SyncAction):
     """
     department_queue에서 하나를 꺼내 현재 목표(target_pose)로 설정.
     큐가 비어있으면 FAILURE를 반환하여 루프 종료를 알림.
@@ -142,7 +144,7 @@ class Move(ActionWithROSAction):
 # ---------------------------------------------------------
 # 4. Doctor: 의료진 대시보드 입력 대기
 # ---------------------------------------------------------
-class Doctor(ActionWithROSTopics):
+class Doctor(ConditionWithROSTopics):
     """
     의료진이 진단을 완료하고 '다음' 버튼을 누르면 메시지를 보낸다고 가정.
     토픽: /hospital/doctor_input (Bool)
@@ -198,6 +200,32 @@ class ReturnHome(ActionWithROSAction):
         return Status.FAILURE
 
 
+class KeepRunningUntilFailure(Node):
+    """
+    자식 노드를 실행하고, 자식이 FAILURE를 반환할 때까지 
+    계속 RUNNING 상태를 유지하며 반복 실행합니다.
+    """
+    # [수정된 부분] 초기화 함수(__init__) 추가
+    def __init__(self, name, children=None):
+        super().__init__(name)
+        # XML 파서가 넘겨준 자식 노드들을 내 리스트에 저장
+        self.children = children if children is not None else []
+
+    def _tick(self, agent, blackboard):
+        # 자식이 없으면 에러(실패) 처리
+        if not self.children:
+            return Status.FAILURE
+            
+        # 자식 노드 실행 (Decorator이므로 첫 번째 자식만 실행)
+        status = self.children[0]._tick(agent, blackboard)
+        
+        # 자식이 실패하면 -> 나도 실패(루프 종료)
+        if status == Status.FAILURE:
+            return Status.FAILURE
+            
+        # 자식이 성공하거나 실행 중이면 -> 나는 계속 실행 중(RUNNING)
+        return Status.RUNNING
+
 # ---------------------------------------------------------
 # 노드 등록
 # ---------------------------------------------------------
@@ -210,3 +238,4 @@ CUSTOM_ACTION_NODES = [
 ]
 
 BTNodeList.ACTION_NODES.extend(CUSTOM_ACTION_NODES)
+BTNodeList.CONTROL_NODES.append('KeepRunningUntilFailure')
