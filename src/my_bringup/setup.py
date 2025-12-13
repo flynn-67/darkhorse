@@ -1,6 +1,6 @@
-import os
-from glob import glob
 from setuptools import setup
+import os
+from glob import glob  # <--- 1. 추가!
 
 package_name = 'my_bringup'
 
@@ -12,18 +12,19 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        # ▼ [필수] launch 폴더 등록
+        # ---------------------------------------------------
+        # 2. 아래 줄을 복사해서 넣으세요!
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+        # ---------------------------------------------------
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='user',
-    maintainer_email='user@todo.todo',
-    description='TODO: Package description',
+    maintainer='wego',
+    maintainer_email='wego@todo.todo',
+    description='System Bringup Package',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [
-        ],
+        'console_scripts': [],
     },
 )
