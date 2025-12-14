@@ -1,3 +1,0 @@
-[console_scripts]
-run_nurse = hospital_service.nurse_bot:main
-

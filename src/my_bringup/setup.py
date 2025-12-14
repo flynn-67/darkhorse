@@ -14,8 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         # ---------------------------------------------------
         # 2. 아래 줄을 복사해서 넣으세요!
-        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
-        # ---------------------------------------------------
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.py'))),        # ---------------------------------------------------
     ],
     install_requires=['setuptools'],
     zip_safe=True,

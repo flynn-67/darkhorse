@@ -11,6 +11,7 @@ from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String, Bool
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
+from nav_msgs.msg import Odometry
 
 # bb = blackboard 
 # ---------------------------------------------------------
@@ -41,7 +42,7 @@ class WaitForQR(SyncAction):
         # [핵심 수정 2] agent.ros_bridge.node 경로 사용
         self.sub = agent.ros_bridge.node.create_subscription(
             String, 
-            "/hospital/patient_data", 
+            "/hospital/system_start", 
             self._callback, 
             10
         )
@@ -80,6 +81,48 @@ class WaitForQR(SyncAction):
         except json.JSONDecodeError:
             self.received_msg = None
             return Status.RUNNING
+        
+# ---------------------------------------------------------
+# [추가] Condition Nodes: 상태 체크용 노드
+# ---------------------------------------------------------
+class IsEmergencyPressed(ConditionWithROSTopics):
+    """
+    비상 정지 버튼이 눌렸는지 확인하는 노드
+    토픽: /emergency_stop (Bool) -> True이면 비상 상황
+    """
+    def __init__(self, name, agent):
+        super().__init__(name, agent, [
+            (Bool, "/emergency_stop", "emergency_flag")
+        ])
+
+    def _predicate(self, agent, bb):
+        # 메시지가 캐시에 있으면 확인
+        if "emergency_flag" in self._cache:
+            is_pressed = self._cache["emergency_flag"].data
+            if is_pressed:
+                print("[Emergency] 비상 정지 버튼 감지됨!")
+                return True # 비상 상황임 (Condition True)
+        
+        return False # 비상 상황 아님
+
+class IsBatteryLow(ConditionWithROSTopics):
+    """
+    배터리가 부족한지 확인하는 노드
+    토픽: /battery_status (가정, 로봇에 맞게 수정 필요)
+    여기서는 테스트를 위해 /battery_low (Bool) 토픽을 구독한다고 가정
+    """
+    def __init__(self, name, agent):
+        super().__init__(name, agent, [
+            (Bool, "/battery_low", "battery_flag")
+        ])
+
+    def _predicate(self, agent, bb):
+        if "battery_flag" in self._cache:
+            is_low = self._cache["battery_flag"].data
+            if is_low:
+                print("[Battery] 배터리 부족 감지!")
+                return True
+        return False
 # ---------------------------------------------------------
 # 2. Think: 다음 목적지 결정 (Iterator 역할)
 # ---------------------------------------------------------
@@ -247,18 +290,72 @@ class SpeakAction(ActionWithROSAction):
         goal = speakActionMsg.Goal()
         goal.text = text_to_speak
         print(f"[Speak] TTS 요청: {text_to_speak}")
-        return goal    
+        return goal   
+    def _tick(self, agent, bb):
+        # 1. Goal 객체 생성
+        goal_msg = Speak.Goal()
+        
+        # 2. 텍스트 할당 (blackboard에서 가져오거나 직접 입력)
+        goal_msg.text = "환자를 확인했습니다"  # 혹은 bb['tts_text']
+        
+        # 3. Goal 객체를 전송 (문자열이 아닌 goal_msg를 보내야 함)
+        # base_bt_nodes_ros.py가 이 goal_msg를 받도록 수정되어야 합니다.
+        self.client.send_goal_async(goal_msg).add_done_callback(self._on_goal_response)
+        
+        return Status.RUNNING
+
+class MonitorSpeed(ConditionWithROSTopics):
+    """
+    로봇의 속도를 모니터링하는 노드
+    토픽: /odom (nav_msgs/Odometry)
+    기능: 속도가 제한 속도(예: 0.8 m/s) 이하이면 SUCCESS(True), 초과하면 FAILURE(False)
+    """
+    def __init__(self, name, agent):
+        super().__init__(name, agent, [
+            (Odometry, "/odom", "odom_msg")
+        ])
+        self.limit = 0.8  # 제한 속도 설정 (m/s)
+
+    def _predicate(self, agent, bb):
+        if "odom_msg" in self._cache:
+            odom = self._cache["odom_msg"]
+            # 선속도(linear.x) 확인
+            current_speed = abs(odom.twist.twist.linear.x)
+            
+            if current_speed > self.limit:
+                print(f"[MonitorSpeed] 과속 감지! 현재 속도: {current_speed:.2f} m/s")
+                return False  # 과속이면 실패 처리 (-> Fallback에서 Stop 동작 유도 등)
+            
+        # 데이터가 없거나 속도가 정상이면 통과
+        return True 
+
 # ---------------------------------------------------------
-# 노드 등록
+# 노드 등록 (수정본)
 # ---------------------------------------------------------
+
+# 1. 액션 노드 이름 등록
 CUSTOM_ACTION_NODES = [
     'WaitForQR',
-    'SpeakAction',  # added 2025/dec/14
+    'SpeakAction',
     'Think',
     'Move',
-    'Doctor',
-    'ReturnHome' # XML에서는 <return> 태그를 쓸 것이므로 매핑 주의
+    'ReturnHome'
 ]
 
+# 2. 조건 노드 이름 등록 (IsEmergencyPressed 추가!)
+CUSTOM_CONDITION_NODES = [
+    'IsEmergencyPressed',
+    'IsBatteryLow',
+    'Doctor',
+        # Doctor는 입력을 기다리는 조건(Condition) 성격이 강하므로 여기 넣는 게 맞을 수도 있습니다.
+              # (위에서 ConditionWithROSTopics를 상속받았다면 여기에 넣으세요.)
+    'MonitorSpeed',
+]
+
+# 3. BTNodeList에 확장 (Extend)
 BTNodeList.ACTION_NODES.extend(CUSTOM_ACTION_NODES)
+BTNodeList.CONDITION_NODES.extend(CUSTOM_CONDITION_NODES) # 이 줄이 꼭 있어야 합니다!
 BTNodeList.CONTROL_NODES.append('KeepRunningUntilFailure')
+
+print(f"Registered Actions: {BTNodeList.ACTION_NODES}")
+print(f"Registered Conditions: {BTNodeList.CONDITION_NODES}")

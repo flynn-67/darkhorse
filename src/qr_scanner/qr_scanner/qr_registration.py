@@ -14,7 +14,7 @@ class QRRegistrationNode(Node):
         # 1. 카메라 구독
         self.subscription = self.create_subscription(
             Image,
-            '/camera/rgb/image_raw',  # LIMO 실제 토픽명 확인 필요
+            '/camera/color/image_raw',  # LIMO 실제 토픽명 확인 필요
             self.listener_callback,
             10)
         

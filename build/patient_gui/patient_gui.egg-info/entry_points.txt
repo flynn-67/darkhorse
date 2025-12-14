@@ -1,3 +1,0 @@
-[console_scripts]
-patient_ui = patient_gui.patient_gui_node:main
-

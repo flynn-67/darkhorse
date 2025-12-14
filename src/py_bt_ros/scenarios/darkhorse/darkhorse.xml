@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4">
   <BehaviorTree ID="MainTree">
-    <Sequence>
-      <WaitForQR/>
-      <SpeakAction/>
-      
-      <KeepRunningUntilFailure>
-        <Sequence>
-          <Think/>   <Move/>   <SpeakAction/>   <Doctor/>  </Sequence>
-      </KeepRunningUntilFailure>
-      
-      <ReturnHome/>
-    </Sequence>
+
+      <Sequence name="NormalSequence">
+        <WaitForQR/>
+        <SpeakAction/>
+        
+        <KeepRunningUntilFailure>
+          <Sequence>
+            <Think/>
+            
+
+            <Parallel success_threshold="1" failure_threshold="1">
+              <Sequence name="EmergencyRoutine">
+                <IsEmergencyPressed/> <ReturnHome/>         </Sequence>
+              <MonitorSpeed/> 
+              <Move/>
+            </Parallel>
+            
+            <SpeakAction/>
+            <Doctor/>
+          </Sequence>
+        </KeepRunningUntilFailure>
+        
+        <ReturnHome/>
+      </Sequence>
+
   </BehaviorTree>
   
   <TreeNodesModel>
-      </TreeNodesModel>
+    <Condition ID="IsEmergencyPressed"/>
+    <Action ID="MonitorSpeed"/>
+  </TreeNodesModel>
 </root>

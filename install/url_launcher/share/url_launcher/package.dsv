@@ -1,9 +1,0 @@
-source;share/url_launcher/hook/pythonpath.ps1
-source;share/url_launcher/hook/pythonpath.dsv
-source;share/url_launcher/hook/pythonpath.sh
-source;share/url_launcher/hook/ament_prefix_path.ps1
-source;share/url_launcher/hook/ament_prefix_path.dsv
-source;share/url_launcher/hook/ament_prefix_path.sh
-source;../../build/url_launcher/share/url_launcher/hook/pythonpath_develop.ps1
-source;../../build/url_launcher/share/url_launcher/hook/pythonpath_develop.dsv
-source;../../build/url_launcher/share/url_launcher/hook/pythonpath_develop.sh

@@ -1,7 +1,10 @@
 from enum import Enum
-# BT Node List
+
+# -----------------------------------------------------------------------------
+# BT Node List Definition
+# -----------------------------------------------------------------------------
 class BTNodeList:
-    CONTROL_NODES = [        
+    CONTROL_NODES = [         
         'Sequence',
         'Fallback',
         'ReactiveSequence',
@@ -10,25 +13,36 @@ class BTNodeList:
     ]
 
     ACTION_NODES = [
+        # Custom actions will be added via main.py or other modules
     ]
 
     CONDITION_NODES = [
         'AlwaysFailure',
         'AlwaysSuccess',
+        # Custom conditions will be added via main.py
     ]
 
     DECORATOR_NODES = [
     ]
 
-# Status enumeration for behavior tree nodes
+# -----------------------------------------------------------------------------
+# Status Enumeration
+# -----------------------------------------------------------------------------
 class Status(Enum):
     SUCCESS = 1
     FAILURE = 2
     RUNNING = 3
 
-# Base class for all behavior tree nodes
+# -----------------------------------------------------------------------------
+# Base Node Class
+# -----------------------------------------------------------------------------
 class Node:
-    def __init__(self, name):
+    def __init__(self, name, **kwargs):
+        """
+        Base Node.
+        **kwargs is added to handle extra attributes from XML (e.g., ID, x, y)
+        without crashing.
+        """
         self.name = name
         self.type = None
         self.status = None
@@ -46,10 +60,14 @@ class Node:
                 child.reset()
     
 
+# -----------------------------------------------------------------------------
+# Control Nodes
+# -----------------------------------------------------------------------------
+
 # Sequence node: Runs child nodes in sequence until one fails
 class Sequence(Node):
-    def __init__(self, name, children):
-        super().__init__(name)
+    def __init__(self, name, children, **kwargs):
+        super().__init__(name, **kwargs)
         self.children = children
         self.current_child_index = 0  
 
@@ -78,9 +96,10 @@ class Sequence(Node):
     def halt(self):
         self.current_child_index = 0
 
+
 class ReactiveSequence(Node):
-    def __init__(self, name, children):
-        super().__init__(name)
+    def __init__(self, name, children, **kwargs):
+        super().__init__(name, **kwargs)
         self.children = children
 
     async def run(self, agent, blackboard):
@@ -99,10 +118,11 @@ class ReactiveSequence(Node):
         for child in self.children:
             child.halt()  
 
+
 # Fallback node: Runs child nodes in sequence until one succeeds
 class Fallback(Node):
-    def __init__(self, name, children):
-        super().__init__(name)
+    def __init__(self, name, children, **kwargs):
+        super().__init__(name, **kwargs)
         self.children = children
         self.current_child_index = 0  
 
@@ -131,9 +151,10 @@ class Fallback(Node):
     def halt(self):
         self.current_child_index = 0            
 
+
 class ReactiveFallback(Node):
-    def __init__(self, name, children):
-        super().__init__(name)
+    def __init__(self, name, children, **kwargs):
+        super().__init__(name, **kwargs)
         self.children = children
 
     async def run(self, agent, blackboard):
@@ -153,19 +174,28 @@ class ReactiveFallback(Node):
         for child in self.children:
             child.halt()  
 
-# Parallel node: Ticks all children sequentially in the same tick and returns by success_count / failure_count
+
+# Parallel node: Modified to accept XML attributes safely
 class Parallel(Node):
-    def __init__(self, name, children, success_count=None, failure_count=None):
+    def __init__(self, name, children, success_threshold=None, failure_threshold=None, **kwargs):
         """
-        success_count: number of SUCCESS children required for overall SUCCESS
-                       (default: len(children))
-        failure_count: number of FAILURE children causing overall FAILURE
-                       (default: None → failures alone don't decide FAILURE)
+        success_threshold (XML attribute): number of SUCCESS children required for overall SUCCESS
+        failure_threshold (XML attribute): number of FAILURE children causing overall FAILURE
         """
-        super().__init__(name)
+        super().__init__(name, **kwargs)
         self.children = children
-        self.success_count = len(children) if success_count is None else success_count
-        self.failure_count = failure_count  # None means ignore failures in final decision
+        
+        # XML에서 'success_threshold'라는 이름으로 넘어오는 값을 처리
+        if success_threshold is not None:
+            self.success_count = int(success_threshold)
+        else:
+            self.success_count = len(children)
+
+        # XML에서 'failure_threshold'라는 이름으로 넘어오는 값을 처리
+        if failure_threshold is not None:
+            self.failure_count = int(failure_threshold)
+        else:
+            self.failure_count = None  # None means ignore failures in final decision
 
     async def run(self, agent, blackboard):
         successes = 0
@@ -211,10 +241,14 @@ class Parallel(Node):
         self.halt_children()
 
 
+# -----------------------------------------------------------------------------
+# Action / Condition Nodes
+# -----------------------------------------------------------------------------
+
 # Synchronous action node
 class SyncAction(Node):
-    def __init__(self, name, action):
-        super().__init__(name)
+    def __init__(self, name, action, **kwargs):
+        super().__init__(name, **kwargs)
         self.action = action
         self.type = "Action"
 
@@ -225,8 +259,8 @@ class SyncAction(Node):
         return result
 
 class SyncCondition(Node):
-    def __init__(self, name, condition):
-        super().__init__(name)
+    def __init__(self, name, condition, **kwargs):
+        super().__init__(name, **kwargs)
         self.condition = condition
         self.is_expanded = False
         self.type = "Condition"
@@ -241,20 +275,18 @@ class SyncCondition(Node):
         self.is_expanded = True
 
 
-
-
 # ---- Helper: AlwaysFailure & AlwaysSuccess -----------------------
 class AlwaysFailure(SyncCondition):
-    def __init__(self, name, agent):
-        super().__init__(name, self._check)
+    def __init__(self, name, agent, **kwargs):
+        # agent 인자는 여기서 쓰지 않지만 시그니처 호환성을 위해 유지
+        super().__init__(name, self._check, **kwargs)
 
     def _check(self, agent, blackboard):
         return Status.FAILURE
 
 class AlwaysSuccess(SyncCondition):
-    def __init__(self, name, agent):
-        super().__init__(name, self._check)
+    def __init__(self, name, agent, **kwargs):
+        super().__init__(name, self._check, **kwargs)
 
     def _check(self, agent, blackboard):
         return Status.SUCCESS
-    

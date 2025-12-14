@@ -77,6 +77,7 @@ def _parse_xml_to_bt(xml_node, *, bt_module, mission_bt_module, agent, top_xml_p
 
     if node_type in BTNodeList.CONTROL_NODES:
         control_class = getattr(bt_module, node_type)
+        node_name = attrib.pop('name', node_type)
         return control_class(node_type, children=children, **attrib)
 
     elif node_type in BTNodeList.DECORATOR_NODES:

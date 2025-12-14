@@ -1,3 +1,0 @@
-[console_scripts]
-url_launcher_node = url_launcher.url_launcher_node:main
-
