@@ -1,9 +1,0 @@
-source;share/smart_dispatcher/hook/pythonpath.ps1
-source;share/smart_dispatcher/hook/pythonpath.dsv
-source;share/smart_dispatcher/hook/pythonpath.sh
-source;share/smart_dispatcher/hook/ament_prefix_path.ps1
-source;share/smart_dispatcher/hook/ament_prefix_path.dsv
-source;share/smart_dispatcher/hook/ament_prefix_path.sh
-source;../../build/smart_dispatcher/share/smart_dispatcher/hook/pythonpath_develop.ps1
-source;../../build/smart_dispatcher/share/smart_dispatcher/hook/pythonpath_develop.dsv
-source;../../build/smart_dispatcher/share/smart_dispatcher/hook/pythonpath_develop.sh

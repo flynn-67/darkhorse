@@ -1,2 +1,0 @@
-[console_scripts]
-dispatcher = smart_dispatcher.smart_dispatcher_node:main

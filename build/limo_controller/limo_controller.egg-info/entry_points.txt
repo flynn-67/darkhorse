@@ -1,3 +1,0 @@
-[console_scripts]
-speed_ctrl = limo_controller.limo_speed_ctrl:main
-
