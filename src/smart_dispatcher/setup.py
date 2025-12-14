@@ -27,7 +27,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'dispatcher = smart_dispatcher.dispatcher_node:main',
+            'dispatcher = smart_dispatcher.smart_dispatcher_node:main',
         ],
     },
 )
