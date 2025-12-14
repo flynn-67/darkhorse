@@ -33,7 +33,9 @@ class SmartDispatcher(Node):
         # Nav2 Navigator
         # -------------------------
         self.navigator = BasicNavigator()
+        self.get_logger().info("Waiting for Nav2...")
         self.navigator.waitUntilNav2Active()
+        self.get_logger().info("Nav2 is active.")
 
         # -------------------------
         # 속도 상태 (Nav2 YAML에서 읽어서 시작)
@@ -173,3 +175,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
