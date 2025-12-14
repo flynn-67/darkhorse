@@ -12,6 +12,7 @@ from std_msgs.msg import String, Bool
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
 
+# bb = blackboard 
 # ---------------------------------------------------------
 # 병원 진료과 좌표 매핑 (예시 - 실제 맵 좌표에 맞게 수정 필요)
 # ---------------------------------------------------------
@@ -50,11 +51,11 @@ class WaitForQR(SyncAction):
         self.received_msg = msg
         print("[WaitForQR] QR 데이터 수신됨!")
 
-    def _tick(self, agent, blackboard):
+    def _tick(self, agent, bb):
         # 1. 초기 위치 저장
         if not self.home_saved:
             if hasattr(agent, 'robot_pose') and agent.robot_pose is not None:
-                blackboard['home_pose'] = agent.robot_pose
+                bb['home_pose'] = agent.robot_pose
                 self.home_saved = True
                 print(f"[WaitForQR] 초기 위치 저장 완료")
 
@@ -67,10 +68,10 @@ class WaitForQR(SyncAction):
         try:
             data = json.loads(self.received_msg.data)
             dept_list = data.get("departments", [])
-            blackboard['department_queue'] = dept_list
-            blackboard['patient_id'] = data.get("patient_id", "Unknown")
+            bb['department_queue'] = dept_list
+            bb['patient_id'] = data.get("patient_id", "Unknown")
             
-            print(f"[WaitForQR] 데이터 확인됨. 환자: {blackboard['patient_id']}")
+            print(f"[WaitForQR] 데이터 확인됨. 환자: {bb['patient_id']}")
             
             self.received_msg = None 
             return Status.SUCCESS # 이제야 비로소 다음 단계로 이동 허가
@@ -86,17 +87,17 @@ class Think(SyncAction):
         # [핵심 수정] 여기도 agent 대신 self._tick으로 변경 필수
         super().__init__(name, self._tick)
 
-    def _tick(self, agent, blackboard):
-        queue = blackboard.get('department_queue', [])
+    def _tick(self, agent, bb):
+        queue = bb.get('department_queue', [])
         
         if len(queue) > 0:
             next_dept = queue.pop(0)
             coords = DEPARTMENT_COORDINATES.get(next_dept)
             
             if coords:
-                blackboard['current_target_name'] = next_dept
-                blackboard['current_target_coords'] = coords
-                blackboard['department_queue'] = queue
+                bb['current_target_name'] = next_dept
+                bb['current_target_coords'] = coords
+                bb['department_queue'] = queue
                 print(f"[Think] 다음 목적지: {next_dept}")
                 return Status.SUCCESS
             else:
@@ -117,8 +118,8 @@ class Move(ActionWithROSAction):
         # Nav2의 기본 액션 토픽: /navigate_to_pose
         super().__init__(name, agent, (NavigateToPose, 'navigate_to_pose'))
 
-    def _build_goal(self, agent, blackboard):
-        coords = blackboard.get('current_target_coords')
+    def _build_goal(self, agent, bb):
+        coords = bb.get('current_target_coords')
         if not coords:
             return None # 목표가 없으면 실행 안 함
 
@@ -130,15 +131,17 @@ class Move(ActionWithROSAction):
         goal.pose.pose.position.y = float(coords['y'])
         goal.pose.pose.orientation.w = 1.0 # 회전은 일단 정면 보기
         
-        print(f"[Move] {blackboard.get('current_target_name')}로 이동 시작...")
+        print(f"[Move] {bb.get('current_target_name')}로 이동 시작...")
         return goal
 
     def _interpret_result(self, result, agent, bb, status_code=None):
         if status_code == GoalStatus.STATUS_SUCCEEDED:
             print("[Move] 목적지 도착 완료.")
+            bb['speak_text'] = f"{bb.get('current_target_name', '목적지')}에 도착했습니다."
             return Status.SUCCESS
         else:
             print(f"[Move] 이동 실패 또는 취소됨 (Status: {status_code})")
+            bb['speak_text'] = f"{bb.get('current_target_name', '목적지')}로 이동에 실패 또는 취소됬습니다."
             return Status.FAILURE
 
 # ---------------------------------------------------------
@@ -154,7 +157,7 @@ class Doctor(ConditionWithROSTopics):
             (Bool, "/hospital/doctor_input", "doctor_signal")
         ])
 
-    def _predicate(self, agent, blackboard):
+    def _predicate(self, agent, bb):
         # 메시지가 들어왔는지 확인
         if "doctor_signal" in self._cache:
             msg = self._cache["doctor_signal"]
@@ -171,13 +174,14 @@ class Doctor(ConditionWithROSTopics):
 # ---------------------------------------------------------
 class ReturnHome(ActionWithROSAction):
     """
-    blackboard['home_pose']로 이동
+    블랙보드['home_pose']로 이동
+    bb['home_pose']로 이동
     """
     def __init__(self, name, agent):
         super().__init__(name, agent, (NavigateToPose, 'navigate_to_pose'))
 
-    def _build_goal(self, agent, blackboard):
-        home_pose = blackboard.get('home_pose')
+    def _build_goal(self, agent, bb):
+        home_pose = bb.get('home_pose')
         if not home_pose:
             # 홈 위치가 없으면 (0,0)으로
             home_pose = PoseStamped()
@@ -206,12 +210,12 @@ class KeepRunningUntilFailure(Node):
         self.children = children if children is not None else []
 
     # 중요: 비동기(async) 실행 함수로 만들어야 함
-    async def run(self, agent, blackboard):
+    async def run(self, agent, bb):
         if not self.children:
             return Status.FAILURE
             
         # 자식 노드의 run 함수를 비동기로 기다림 (await)
-        status = await self.children[0].run(agent, blackboard)
+        status = await self.children[0].run(agent, bb)
         
         # 자식이 실패하면 -> 루프 종료 (나도 실패 반환)
         if status == Status.FAILURE:
@@ -232,9 +236,14 @@ class SpeakAction(ActionWithROSAction):
     def __init__ (self, name, agent):
         super().__init__(name, agent, (speakActionMsg, 'speak_text'))
 
-    def _build_goal(self, agent, blackboard):
-        text_to_speak = f"{blackboard.get('current_target_name', '알 수 없음')} 에 도착 했습니다."
-        goal = SpeakAction.Goal()
+    def _build_goal(self, agent, bb):
+        #text_to_speak = f"{bb.get('current_target_name', '알 수 없음')} 에 도착 했습니다."
+       
+        text_to_speak = bb.pop('speak_text', None)
+        if not text_to_speak:
+            return Status.SUCCESS  # 말할 내용이 없으면 실행 안 함
+        
+        goal = speakActionMsg.Goal()
         goal.text = text_to_speak
         print(f"[Speak] TTS 요청: {text_to_speak}")
         return goal    
