@@ -57,6 +57,7 @@ class WaitForQR(SyncAction):
         if not self.home_saved:
             if hasattr(agent, 'robot_pose') and agent.robot_pose is not None:
                 bb['home_pose'] = agent.robot_pose
+                bb['speak_text'] = "초기 위치가 저장되었습니다. 진료과로 이동을 시작합니다."
                 self.home_saved = True
                 print(f"[WaitForQR] 초기 위치 저장 완료")
 
