@@ -137,7 +137,7 @@ class Move(ActionWithROSAction):
     def _interpret_result(self, result, agent, bb, status_code=None):
         if status_code == GoalStatus.STATUS_SUCCEEDED:
             print("[Move] 목적지 도착 완료.")
-            bb['speak_text'] = f"{'current_target_name', '목적지'}에 도착했습니다."
+            bb['speak_text'] = f"{bb.get('current_target_name', '목적지')}에 도착했습니다."
             return Status.SUCCESS
         else:
             print(f"[Move] 이동 실패 또는 취소됨 (Status: {status_code})")
