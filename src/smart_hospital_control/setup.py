@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'control_ui = smart_hospital_control.control_ui:main',
+            'patient_ui = smart_hospital_control.patient_ui:main',
         ],
     },
 )
