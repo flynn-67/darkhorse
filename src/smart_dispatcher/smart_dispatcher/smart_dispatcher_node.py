@@ -1,5 +1,10 @@
+import os
 import json
 import random
+import math
+from pathlib import Path
+
+import yaml
 
 import rclpy
 from rclpy.node import Node
@@ -11,14 +16,59 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from rcl_interfaces.srv import GetParameters, SetParameters
 from rcl_interfaces.msg import Parameter, ParameterValue
 
-
-DEPARTMENT_COORDINATES = {
-    "진단검사의학과": {"x": 1.5550981760025024, "y": -0.7568473219871521, "w": 1.0},
-    "영상의학과":    {"x": 2.455418825149536,  "y": -1.0977704524993896, "w": 1.0},
-    "안내데스크":    {"x": -0.054564960300922394, "y": -0.047728609293699265, "w": 1.0},
-}
-
 INFO_DESK_NAME = "안내데스크"
+
+
+def _find_waypoint_yaml(default_name="hospital_waypoints.yaml") -> str:
+    """
+    우선순위:
+    1) ROS param waypoint_file (SmartDispatcher에서 처리)
+    2) ENV: HOSPITAL_WAYPOINTS_FILE
+    3) ~/.ros/hospital_waypoints.yaml
+    4) 현재 파일 기준 상위 경로들 중 config/hospital_waypoints.yaml
+    """
+    env = os.environ.get("HOSPITAL_WAYPOINTS_FILE")
+    if env:
+        return env
+
+    cand = os.path.expanduser("~/.ros/hospital_waypoints.yaml")
+    if os.path.exists(cand):
+        return cand
+
+    here = Path(__file__).resolve()
+    for p in [here.parent] + list(here.parents):
+        c = p / "config" / default_name
+        if c.exists():
+            return str(c)
+
+    # 마지막 fallback
+    return os.path.expanduser("~/.ros/hospital_waypoints.yaml")
+
+
+def _yaw_to_quat(yaw: float):
+    qz = math.sin(yaw * 0.5)
+    qw = math.cos(yaw * 0.5)
+    return (0.0, 0.0, qz, qw)
+
+
+def _coords_to_pose(node: Node, info: dict) -> PoseStamped:
+    pose = PoseStamped()
+    pose.header.frame_id = "map"
+    pose.header.stamp = node.get_clock().now().to_msg()
+    pose.pose.position.x = float(info["x"])
+    pose.pose.position.y = float(info["y"])
+
+    # yaw가 있으면 quaternion으로 변환
+    if "yaw" in info:
+        _, _, qz, qw = _yaw_to_quat(float(info["yaw"]))
+        pose.pose.orientation.z = qz
+        pose.pose.orientation.w = qw
+    else:
+        # 기존 호환: w만 있는 케이스(=1.0 등)
+        pose.pose.orientation.z = float(info.get("z", 0.0))
+        pose.pose.orientation.w = float(info.get("w", 1.0))
+
+    return pose
 
 
 class SmartDispatcher(Node):
@@ -27,15 +77,27 @@ class SmartDispatcher(Node):
     출발할 때마다 랜덤 대기인원 생성 -> 최소 대기인원 과로 이동
     waypoint 도착 후 /hospital/next_waypoint(True) 오면 다음 출발
 
-    UI publish(/nav_status, /nav_current_target, /nav_current_speed, /hospital/waiting_counts) 제거 버전
+    UI publish 제거 버전
+    - 좌표는 YAML에서 읽음 (자동 reload)
     """
 
     def __init__(self):
         super().__init__('smart_dispatcher')
 
+        # ---- waypoint yaml 경로 (param 우선) ----
+        self.declare_parameter("waypoint_file", _find_waypoint_yaml())
+        self.waypoint_file = self.get_parameter("waypoint_file").get_parameter_value().string_value
+
+        # ---- YAML 캐시 ----
+        self._wp_mtime = None
+        self._dept_coords = {}  # {name: {x,y,yaw or w}}
+
+        # 최초 로드
+        self._reload_waypoints(force=True)
+
         # ---- 상태 ----
-        self.remaining_depts = []        # 아직 방문 안 한 과(후보)  (안내데스크 제외)
-        self.waiting_counts = {}         # {과: 대기인원}
+        self.remaining_depts = []
+        self.waiting_counts = {}
         self.wait_min = 0
         self.wait_max = 20
 
@@ -66,10 +128,55 @@ class SmartDispatcher(Node):
         self.create_subscription(Bool,    '/nav_pause',               self.cb_pause, 10)
         self.create_subscription(Bool,    '/nav_emergency_home',      self.cb_emergency_home, 10)
 
-        self.get_logger().info("IDLE: QR 대기 중 (UI publish 제거 버전)")
+        self.get_logger().info("IDLE: QR 대기 중 (YAML waypoint 적용 버전)")
 
-        # ---- 주기 타이머: Nav2 완료 체크 ----
+        # ---- 주기 타이머: Nav2 완료 체크 + yaml 변경 감지 ----
         self.create_timer(0.1, self.loop)
+
+    # =============== YAML 로드/리로드 ===============
+    def _reload_waypoints(self, force: bool = False) -> bool:
+        path = self.waypoint_file
+
+        try:
+            mtime = os.path.getmtime(path) if os.path.exists(path) else None
+        except Exception:
+            mtime = None
+
+        if (not force) and (mtime is not None) and (self._wp_mtime == mtime):
+            return False
+
+        if not os.path.exists(path):
+            self.get_logger().warn(f"[waypoints] YAML not found: {path}")
+            self._dept_coords = {}
+            self._wp_mtime = mtime
+            return True
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            depts = data.get("departments", {}) or {}
+
+            # 최소 검증
+            cleaned = {}
+            for name, info in depts.items():
+                if not isinstance(info, dict):
+                    continue
+                if "x" not in info or "y" not in info:
+                    continue
+                cleaned[str(name)] = dict(info)
+
+            self._dept_coords = cleaned
+            self._wp_mtime = mtime
+            self.get_logger().info(f"[waypoints] loaded {len(cleaned)} departments from: {path}")
+            return True
+
+        except Exception as e:
+            self.get_logger().error(f"[waypoints] YAML load failed: {e}")
+            return False
+
+    def _maybe_reload_waypoints(self):
+        # loop에서 계속 확인
+        self._reload_waypoints(force=False)
 
     # =============== 콜백들 ===============
     def cb_amcl_pose(self, msg: PoseWithCovarianceStamped):
@@ -84,13 +191,11 @@ class SmartDispatcher(Node):
         self.get_logger().info("[dispatcher] Home pose saved")
 
     def cb_patient_data(self, msg: String):
-        """
-        QR 완료 후 patient_data(JSON) 수신하면 후보 리스트 세팅하고 첫 출발
-        안내데스크는 무조건 제외됨
-        """
         if self.is_emergency:
             self.get_logger().info("EMERGENCY: 복귀 중 (QR 무시)")
             return
+
+        self._reload_waypoints(force=False)
 
         try:
             data = json.loads(msg.data)
@@ -100,9 +205,10 @@ class SmartDispatcher(Node):
             return
 
         # ✅ 후보 구성(유효한 항목만) + ✅ 안내데스크 제외
+        available = set(self._dept_coords.keys())
         self.remaining_depts = [
             d for d in depts
-            if (d in DEPARTMENT_COORDINATES) and (d != INFO_DESK_NAME)
+            if (d in available) and (d != INFO_DESK_NAME)
         ]
 
         if not self.remaining_depts:
@@ -117,9 +223,6 @@ class SmartDispatcher(Node):
         self._start_next_goal()
 
     def cb_next_waypoint(self, msg: Bool):
-        """
-        도착 후 대기 상태일 때만 다음 출발
-        """
         if not msg.data:
             return
         if self.is_emergency:
@@ -136,10 +239,6 @@ class SmartDispatcher(Node):
         self.get_logger().info(f"[speed] current_speed={self.current_speed:.2f}")
 
     def cb_pause(self, msg: Bool):
-        """
-        True: 정지(현재 task cancel)
-        False: 재개(현재 목표로 다시 goToPose)
-        """
         if msg.data:
             self.is_paused = True
             self.navigator.cancelTask()
@@ -152,7 +251,6 @@ class SmartDispatcher(Node):
             self.get_logger().info("EMERGENCY: 복귀 중")
             return
 
-        # 도착 대기 상태면 재개할 게 없음
         if self.waiting_next:
             self.get_logger().info("ARRIVED: 다음 신호 대기(/hospital/next_waypoint)")
             return
@@ -164,9 +262,6 @@ class SmartDispatcher(Node):
             self.get_logger().info("IDLE")
 
     def cb_emergency_home(self, msg: Bool):
-        """
-        True면 즉시 멈추고 Home으로 복귀 (후보/목표 초기화)
-        """
         if not msg.data:
             return
 
@@ -193,6 +288,9 @@ class SmartDispatcher(Node):
 
     # =============== 메인 루프 ===============
     def loop(self):
+        # ✅ yaml 변경 감지
+        self._maybe_reload_waypoints()
+
         # emergency/home 복귀 중이면 완료 체크만
         if self.is_emergency:
             if self.navigator.isTaskComplete():
@@ -221,7 +319,6 @@ class SmartDispatcher(Node):
 
     # =============== 내부 유틸 ===============
     def _refresh_waiting_counts(self):
-        # 남은 후보 과들에 대해 랜덤 대기인원 갱신
         self.waiting_counts = {
             d: random.randint(self.wait_min, self.wait_max)
             for d in self.remaining_depts
@@ -234,6 +331,8 @@ class SmartDispatcher(Node):
             self.get_logger().info("DONE: 모든 waypoint 완료")
             return
 
+        self._reload_waypoints(force=False)
+
         self._refresh_waiting_counts()
 
         min_wait = min(self.waiting_counts.values())
@@ -242,13 +341,12 @@ class SmartDispatcher(Node):
 
         self.remaining_depts.remove(name)
 
-        info = DEPARTMENT_COORDINATES[name]
-        pose = PoseStamped()
-        pose.header.frame_id = "map"
-        pose.header.stamp = self.get_clock().now().to_msg()
-        pose.pose.position.x = float(info["x"])
-        pose.pose.position.y = float(info["y"])
-        pose.pose.orientation.w = float(info.get("w", 1.0))
+        info = self._dept_coords.get(name)
+        if not info:
+            self.get_logger().warn(f"[waypoints] missing coords for: {name} (skip)")
+            return
+
+        pose = _coords_to_pose(self, info)
 
         self.current_goal_name = name
         self.current_goal_pose = pose

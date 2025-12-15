@@ -1,6 +1,10 @@
 import math
 import json
 import random
+import os
+from pathlib import Path
+import yaml
+
 from modules.base_bt_nodes import (
     BTNodeList, Status, SyncAction, Node,
     Sequence, Fallback, ReactiveSequence, ReactiveFallback, Parallel,
@@ -16,23 +20,108 @@ from nav_msgs.msg import Odometry
 
 INFO_DESK_NAME = "안내데스크"
 
-DEPARTMENT_COORDINATES = {
-    "진단검사의학과": {"x": 1.5550981760025024, "y": -0.7568473219871521, "w": 1.0},
-    "영상의학과":    {"x": 2.455418825149536,  "y": -1.0977704524993896, "w": 1.0},
-    "안내데스크":    {"x": -0.054564960300922394, "y": -0.047728609293699265, "w": 1.0},
-}
+# =========================
+# YAML waypoint loader (bt_nodes)
+# =========================
+_WP_CACHE = {"path": None, "mtime": None, "depts": {}}
 
-# ✅ 기본 후보에서 안내데스크 제거
-DEFAULT_DEPARTMENTS = ["진단검사의학과", "영상의학과"]
+def _find_waypoint_yaml(default_name="hospital_waypoints.yaml") -> str:
+    # 1) ENV 우선
+    env = os.environ.get("HOSPITAL_WAYPOINTS_FILE")
+    if env:
+        return env
+
+    # 2) ~/.ros fallback
+    cand = os.path.expanduser("~/.ros/hospital_waypoints.yaml")
+    if os.path.exists(cand):
+        return cand
+
+    # 3) 현재 파일 기준으로 위로 올라가며 config/ 찾아보기
+    here = Path(__file__).resolve()
+    for p in [here.parent] + list(here.parents):
+        c = p / "config" / default_name
+        if c.exists():
+            return str(c)
+
+    # 마지막 fallback
+    return cand
+
+WAYPOINT_FILE = _find_waypoint_yaml()
+
+def _reload_waypoints(force: bool = False):
+    global _WP_CACHE
+    path = WAYPOINT_FILE
+
+    try:
+        mtime = os.path.getmtime(path) if os.path.exists(path) else None
+    except Exception:
+        mtime = None
+
+    if (not force) and (_WP_CACHE["path"] == path) and (_WP_CACHE["mtime"] == mtime) and (_WP_CACHE["depts"] is not None):
+        return
+
+    if not os.path.exists(path):
+        _WP_CACHE = {"path": path, "mtime": mtime, "depts": {}}
+        return
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        depts = data.get("departments", {}) or {}
+
+        cleaned = {}
+        for name, info in depts.items():
+            if isinstance(info, dict) and ("x" in info) and ("y" in info):
+                cleaned[str(name)] = dict(info)
+
+        _WP_CACHE = {"path": path, "mtime": mtime, "depts": cleaned}
+    except Exception:
+        # 파싱 실패 시 기존 캐시 유지 (갑자기 비워지면 위험해서)
+        return
+
+def get_coords(name: str):
+    _reload_waypoints(force=False)
+    return _WP_CACHE["depts"].get(name)
+
+def list_departments(exclude_info_desk: bool = True):
+    _reload_waypoints(force=False)
+    names = list(_WP_CACHE["depts"].keys())
+    if exclude_info_desk:
+        names = [n for n in names if n != INFO_DESK_NAME]
+    return names
+
+def _yaw_to_quat(yaw: float):
+    qz = math.sin(yaw * 0.5)
+    qw = math.cos(yaw * 0.5)
+    return (0.0, 0.0, qz, qw)
+
+def _apply_orientation_from_coords(pose, coords: dict):
+    """
+    coords에 yaw가 있으면 yaw -> quaternion 적용
+    없으면 기존 호환: z,w 또는 w만 사용
+    """
+    if coords is None:
+        return
+    if "yaw" in coords:
+        _, _, qz, qw = _yaw_to_quat(float(coords["yaw"]))
+        pose.orientation.z = qz
+        pose.orientation.w = qw
+    else:
+        pose.orientation.z = float(coords.get("z", 0.0))
+        pose.orientation.w = float(coords.get("w", 1.0))
 
 
+# =========================
+# BT Nodes
+# =========================
 class GoToInfoDesk(ActionWithROSAction):
     def __init__(self, name, agent):
         super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
 
     def _build_goal(self, agent, bb):
-        coords = DEPARTMENT_COORDINATES.get(INFO_DESK_NAME)
+        coords = get_coords(INFO_DESK_NAME)
         if not coords:
+            print("[GoToInfoDesk] 안내데스크 좌표가 YAML에 없음!")
             return None
 
         goal = NavigateToPose.Goal()
@@ -40,7 +129,7 @@ class GoToInfoDesk(ActionWithROSAction):
         goal.pose.header.stamp = self.ros.node.get_clock().now().to_msg()
         goal.pose.pose.position.x = float(coords['x'])
         goal.pose.pose.position.y = float(coords['y'])
-        goal.pose.pose.orientation.w = float(coords['w'])
+        _apply_orientation_from_coords(goal.pose.pose, coords)
 
         print(f"[GoToInfoDesk] 🚨 비상 상황! 안내데스크({coords})로 이동합니다.")
         return goal
@@ -86,13 +175,16 @@ class WaitForQR(SyncAction):
             bb['patient_id'] = data.get("patient_id", "Unknown")
 
             raw_depts = data.get("departments", None)
+
+            # ✅ QR에 과 목록이 없으면: YAML에 있는 과 목록(안내데스크 제외)을 기본값으로 사용
             if not raw_depts:
-                raw_depts = DEFAULT_DEPARTMENTS
+                raw_depts = list_departments(exclude_info_desk=True) or ["진단검사의학과", "영상의학과"]
 
             # ✅ 유효 과만 남기되, 안내데스크는 후보에서 제외
+            available = set(list_departments(exclude_info_desk=False))
             depts = [
                 d for d in raw_depts
-                if (d in DEPARTMENT_COORDINATES) and (d != INFO_DESK_NAME)
+                if (d in available) and (d != INFO_DESK_NAME)
             ]
 
             bb['department_queue'] = list(depts)
@@ -165,9 +257,9 @@ class Think(SyncAction):
         candidates = [d for d, w in waiting_counts.items() if w == min_wait]
         next_dept = random.choice(candidates)
 
-        coords = DEPARTMENT_COORDINATES.get(next_dept)
+        coords = get_coords(next_dept)
         if not coords:
-            print(f"[Think] 좌표 없음: {next_dept}")
+            print(f"[Think] YAML에 좌표 없음: {next_dept} -> 후보에서 제거")
             remaining.remove(next_dept)
             bb['remaining_depts'] = remaining
             return Status.RUNNING
@@ -199,7 +291,7 @@ class Move(ActionWithROSAction):
         goal.pose.header.stamp = self.ros.node.get_clock().now().to_msg()
         goal.pose.pose.position.x = float(coords['x'])
         goal.pose.pose.position.y = float(coords['y'])
-        goal.pose.pose.orientation.w = 1.0
+        _apply_orientation_from_coords(goal.pose.pose, coords)
 
         print(f"[Move] {bb.get('current_target_name')}로 이동 시작...")
         return goal
@@ -241,8 +333,9 @@ class ReturnHome(ActionWithROSAction):
         super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
 
     def _build_goal(self, agent, bb):
-        coords = DEPARTMENT_COORDINATES.get(INFO_DESK_NAME)
+        coords = get_coords(INFO_DESK_NAME)
         if not coords:
+            print("[ReturnHome] 안내데스크 좌표가 YAML에 없음!")
             return None
 
         goal = NavigateToPose.Goal()
@@ -250,7 +343,8 @@ class ReturnHome(ActionWithROSAction):
         goal.pose.header.stamp = self.ros.node.get_clock().now().to_msg()
         goal.pose.pose.position.x = float(coords['x'])
         goal.pose.pose.position.y = float(coords['y'])
-        goal.pose.pose.orientation.w = float(coords.get('w', 1.0))
+        _apply_orientation_from_coords(goal.pose.pose, coords)
+
         print("[Return] 안내데스크로 복귀합니다.")
         return goal
 
