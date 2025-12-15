@@ -22,6 +22,7 @@ class ConditionWithROSTopics(Node):
             self.status = Status.RUNNING
         elif self._predicate(agent, blackboard):
             self.status = Status.SUCCESS
+            self._cache.clear()
         else:
             self.status = Status.FAILURE
         

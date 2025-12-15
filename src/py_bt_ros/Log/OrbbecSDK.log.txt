@@ -1,0 +1,312 @@
+[12/14 22:11:46.782012][debug][51091][Context.cpp:30] Context creating, work_dir=/home/wego/wego_ws/src/darkhorse/src/py_bt_ros
+[12/14 22:11:46.783034][debug][51091][Context.cpp:49] Config file version=1.1
+[12/14 22:11:46.783120][debug][51091][FrameBufferManager.cpp:23] Max global frame buffer size updated! size=2048.000MB
+[12/14 22:11:46.783144][info][51091][Context.cpp:68] Context created with config: /home/wego/wego_ws/install/orbbec_camera/share/orbbec_camera/config/OrbbecSDKConfig_v1.0.xml
+[12/14 22:11:46.783222][info][51091][Context.cpp:73] Work directory=/home/wego/wego_ws/src/darkhorse/src/py_bt_ros, SDK version=v1.10.8-20240604-d1671a3
+[12/14 22:11:46.783243][debug][51091][DeviceManager.cpp:30] DeviceManager init ...
+[12/14 22:11:46.783249][info][51091][LinuxPal.cpp:32] createObPal: create LinuxPal!
+[12/14 22:11:46.785210][debug][51091][DeviceManager.cpp:34] Enable USB Device Enumerator ...
+[12/14 22:11:46.814998][debug][51091][EnumeratorLibusb.cpp:322] queryDevicesInfo done!
+[12/14 22:11:46.815074][debug][51091][UsbDeviceEnumerator.cpp:162] Current usb device port list:
+[12/14 22:11:46.815091][debug][51091][UsbDeviceEnumerator.cpp:165]  - 1-3.2-6.0 | Dabai DC1
+[12/14 22:11:46.815095][debug][51091][UsbDeviceEnumerator.cpp:165]  - 1-3.4-8.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[12/14 22:11:46.815207][warning][51091][OpenNIDeviceInfo.cpp:186] New openni device matched.
+[12/14 22:11:46.815495][info][51091][LinuxPal.cpp:143] Create PollingDeviceWatcher!
+[12/14 22:11:46.815520][debug][51091][UsbDeviceEnumerator.cpp:70] Found 1 device(s):
+[12/14 22:11:46.815531][debug][51091][UsbDeviceEnumerator.cpp:73]   - Name: DaBai DC1, PID: 0x0657, SN/ID: , connection: USB2.0
+[12/14 22:11:46.815644][info][51091][DeviceManager.cpp:15] Current found device(s): (1)
+[12/14 22:11:46.815712][info][51091][DeviceManager.cpp:24] 	- Name: DaBai DC1, PID: 0x0657, SN/ID: , Connection: USB2.0
+[12/14 22:11:46.815781][debug][51091][DeviceManager.cpp:52] DeviceManager construct done!
+[12/14 22:11:46.823689][info][51091][DeviceManager.cpp:304] Enable net device enumeration: false
+[12/14 22:11:46.924862][debug][51114][DeviceManager.cpp:109] DeviceManager  createDevice...
+[12/14 22:11:46.924940][debug][51114][UsbDeviceEnumerator.cpp:288] UsbDeviceEnumerator createDevice...
+[12/14 22:11:46.926454][error][51114][HandleLibusb.hpp:89] failed to claim usb interface: 0, error: OB_USB_STATUS_BUSY
+[12/14 22:11:46.928771][info][51114][OpenNIHostProtocol.cpp:567] Hardware versions: FW=5.8.23 (14), HW=0, Chip=7, Sensor=0, SYS=12
+[12/14 22:11:46.930436][error][51114][OpenNIHostProtocol.cpp:584] Get usb core type failed!
+[12/14 22:11:46.930492][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:46.932978][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:46.935789][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:46.938883][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:46.938955][debug][51114][OpenNIHostProtocol.cpp:690] Getting the fixed params...
+[12/14 22:11:46.940827][debug][51114][OpenNIHostProtocol.cpp:730] Reading sensor serial number...
+[12/14 22:11:46.942307][info][51114][OpenNISensorFirmware.cpp:1185] Sensor serial number:CC1V45200EA
+[12/14 22:11:46.944210][debug][51114][OpenNIHostProtocol.cpp:802] Reading sensor platform string...
+[12/14 22:11:46.946670][info][51114][OpenNISensorFirmware.cpp:1213] Firmware version RD1001
+[12/14 22:11:46.948532][info][51114][OpenNISensorFirmware.cpp:1219] Device frequency 31.25
+[12/14 22:11:46.948573][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:46.948593][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 1 supported presets...
+[12/14 22:11:46.952302][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:46.952358][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 2 supported presets...
+[12/14 22:11:47.007732][debug][51114][OpenNISensorParams.cpp:110] set property DepthMirror(0)
+[12/14 22:11:47.009215][debug][51114][OpenNISensorParams.cpp:121] DepthMirror(0)was successfully set.
+[12/14 22:11:47.009314][debug][51114][OpenNISensorFirmware.cpp:1231] OpenNI camera params read.
+[12/14 22:11:47.476528][debug][51114][OpenNISensorFirmware.cpp:2053] OpenNI camera params read end.
+[12/14 22:11:47.480710][info][51114][OpenNISensorFirmware.cpp:150] OpenNI2 camera support Watchdog function.
+[12/14 22:11:47.480783][debug][51114][OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[12/14 22:11:47.480792][debug][51114][OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[12/14 22:11:47.480801][debug][51114][OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[12/14 22:11:47.480805][debug][51114][OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[12/14 22:11:47.480809][debug][51114][OpenNISensorIO.cpp:60] Opening endpoint 0x84  for image...
+[12/14 22:11:47.480813][debug][51114][OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[12/14 22:11:47.480816][debug][51114][OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[12/14 22:11:47.480820][debug][51114][OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[12/14 22:11:47.480823][debug][51114][OpenNISensorIO.cpp:87] Endpoints open end.
+[12/14 22:11:47.480861][debug][51114][VendorCommand.cpp:205] VendorCommand constructor ffff4c00be10
+[12/14 22:11:47.480867][debug][51114][OpenNIDevice.cpp:190] init sensor map start!
+[12/14 22:11:47.480912][debug][51114][OpenNIDevice.cpp:204] init sensor map done!
+[12/14 22:11:47.481028][debug][51114][PropertyAccessor.cpp:50] get firmware data success! propertyId: 1000, dataLen: 164
+[12/14 22:11:47.481052][info][51114][AbstractDevice.cpp:117] 	- Firmware version: RD1001
+[12/14 22:11:47.481214][debug][51114][OpenNIDevice.cpp:244] Init depth process param start!
+[12/14 22:11:47.481258][debug][51114][OpenNIDevice.cpp:259] Device baseline: 39.623146, fx:951.2432861328125
+[12/14 22:11:47.481265][debug][51114][OpenNIDevice.cpp:290] Init depth process param done!
+[12/14 22:11:47.481284][info][51114][OpenNIDevice.cpp:37] OpenNI device created! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:47.481293][debug][51114][UsbDeviceEnumerator.cpp:352] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:47.481301][info][51114][DeviceManager.cpp:150] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:47.481398][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:47.481453][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:47.626857][debug][51114][FrameProcessor.cpp:82] FrameProcessor init with 2 blocks! @281471956865856
+[12/14 22:11:47.627067][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:47.627088][debug][51114][FrameProcessor.cpp:90]  - block: FrameUnpacker, status: enable
+[12/14 22:11:47.627103][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:47.627110][debug][51114][FrameProcessor.cpp:90]  - block: FrameMirror, status: disable
+[12/14 22:11:47.627140][info][51114][OpenNIDevice.cpp:509] IR sensor has been created!
+[12/14 22:11:47.627196][debug][51114][OpenNIVideoSensor.cpp:857] Query stream profile! size= 9, sensorType=OB_SENSOR_IR
+[12/14 22:11:47.627213][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 30}
+[12/14 22:11:47.627218][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 5}
+[12/14 22:11:47.627222][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 10}
+[12/14 22:11:47.627226][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 15}
+[12/14 22:11:47.627230][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 30}
+[12/14 22:11:47.627234][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 5}
+[12/14 22:11:47.627280][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 10}
+[12/14 22:11:47.627285][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 15}
+[12/14 22:11:47.627289][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 1280, height: 800, fps: 7}
+[12/14 22:11:47.627351][debug][51114][LinuxPal.cpp:269] Uvc backend have been set to LibUVC(1)
+[12/14 22:11:47.646158][warning][51114][ObLibuvcDevicePort.cpp:51] uvc_open  path=1-3.2-6.0 already opened
+[12/14 22:11:47.646255][warning][51114][ObLibuvcDevicePort.cpp:54] uvc_open  path=1-3.2-6.0 failed,return res:$-6
+[12/14 22:11:47.647258][info][51114][OpenNIDevice.cpp:41] OpenNI device destroyed! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:47.647298][info][51114][OpenNIVideoSensor.cpp:1014] OpenNIVideoSensor destroyed! sensorType=OB_SENSOR_IR
+[12/14 22:11:47.647346][debug][51114][FrameProcessor.cpp:103] FrameProcessor destroyed! @281471956865856
+[12/14 22:11:47.647360][debug][51114][VendorCommand.cpp:213] destructor ffff4c00be10
+[12/14 22:11:47.647376][debug][51114][VendorCommand.cpp:460] disableHeartBeat heartBeatHelper_: 0
+[12/14 22:11:47.647382][debug][51114][HostProtocol.cpp:139] ~HostProtocol()
+[12/14 22:11:47.647418][debug][51117][HostProtocol.cpp:167] emitTranDataFutureSignalThread_ finish
+[12/14 22:11:47.748276][debug][51114][DeviceManager.cpp:109] DeviceManager  createDevice...
+[12/14 22:11:47.748449][debug][51114][UsbDeviceEnumerator.cpp:288] UsbDeviceEnumerator createDevice...
+[12/14 22:11:47.749769][error][51114][HandleLibusb.hpp:89] failed to claim usb interface: 0, error: OB_USB_STATUS_BUSY
+[12/14 22:11:47.751724][info][51114][OpenNIHostProtocol.cpp:567] Hardware versions: FW=5.8.23 (14), HW=0, Chip=7, Sensor=0, SYS=12
+[12/14 22:11:47.753271][error][51114][OpenNIHostProtocol.cpp:584] Get usb core type failed!
+[12/14 22:11:47.753312][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:47.754915][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:47.757579][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:47.759071][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:47.759104][debug][51114][OpenNIHostProtocol.cpp:690] Getting the fixed params...
+[12/14 22:11:47.760663][debug][51114][OpenNIHostProtocol.cpp:730] Reading sensor serial number...
+[12/14 22:11:47.762117][info][51114][OpenNISensorFirmware.cpp:1185] Sensor serial number:CC1V45200EA
+[12/14 22:11:47.763586][debug][51114][OpenNIHostProtocol.cpp:802] Reading sensor platform string...
+[12/14 22:11:47.765082][info][51114][OpenNISensorFirmware.cpp:1213] Firmware version RD1001
+[12/14 22:11:47.766828][info][51114][OpenNISensorFirmware.cpp:1219] Device frequency 31.25
+[12/14 22:11:47.766849][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:47.766874][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 1 supported presets...
+[12/14 22:11:47.768307][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:47.768321][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 2 supported presets...
+[12/14 22:11:47.815605][debug][51114][OpenNISensorParams.cpp:110] set property DepthMirror(0)
+[12/14 22:11:47.817103][debug][51114][OpenNISensorParams.cpp:121] DepthMirror(0)was successfully set.
+[12/14 22:11:47.817151][debug][51114][OpenNISensorFirmware.cpp:1231] OpenNI camera params read.
+[12/14 22:11:48.039495][debug][51114][OpenNISensorFirmware.cpp:2053] OpenNI camera params read end.
+[12/14 22:11:48.042730][info][51114][OpenNISensorFirmware.cpp:150] OpenNI2 camera support Watchdog function.
+[12/14 22:11:48.042797][debug][51114][OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[12/14 22:11:48.042806][debug][51114][OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[12/14 22:11:48.042872][debug][51114][OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[12/14 22:11:48.042877][debug][51114][OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[12/14 22:11:48.042881][debug][51114][OpenNISensorIO.cpp:60] Opening endpoint 0x84  for image...
+[12/14 22:11:48.042885][debug][51114][OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[12/14 22:11:48.042888][debug][51114][OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[12/14 22:11:48.042891][debug][51114][OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[12/14 22:11:48.042894][debug][51114][OpenNISensorIO.cpp:87] Endpoints open end.
+[12/14 22:11:48.042903][debug][51114][VendorCommand.cpp:205] VendorCommand constructor ffff4c002d20
+[12/14 22:11:48.042908][debug][51114][OpenNIDevice.cpp:190] init sensor map start!
+[12/14 22:11:48.042919][debug][51114][OpenNIDevice.cpp:204] init sensor map done!
+[12/14 22:11:48.042973][debug][51114][PropertyAccessor.cpp:50] get firmware data success! propertyId: 1000, dataLen: 164
+[12/14 22:11:48.042981][info][51114][AbstractDevice.cpp:117] 	- Firmware version: RD1001
+[12/14 22:11:48.043107][debug][51114][OpenNIDevice.cpp:244] Init depth process param start!
+[12/14 22:11:48.043134][debug][51114][OpenNIDevice.cpp:259] Device baseline: 39.623146, fx:951.2432861328125
+[12/14 22:11:48.043138][debug][51114][OpenNIDevice.cpp:290] Init depth process param done!
+[12/14 22:11:48.043155][info][51114][OpenNIDevice.cpp:37] OpenNI device created! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:48.043162][debug][51114][UsbDeviceEnumerator.cpp:352] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:48.043169][info][51114][DeviceManager.cpp:150] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:48.043202][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.043222][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.043652][debug][51114][FrameProcessor.cpp:82] FrameProcessor init with 2 blocks! @281471956865856
+[12/14 22:11:48.043680][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.043692][debug][51114][FrameProcessor.cpp:90]  - block: FrameUnpacker, status: enable
+[12/14 22:11:48.043702][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.043709][debug][51114][FrameProcessor.cpp:90]  - block: FrameMirror, status: disable
+[12/14 22:11:48.043720][info][51114][OpenNIDevice.cpp:509] IR sensor has been created!
+[12/14 22:11:48.043761][debug][51114][OpenNIVideoSensor.cpp:857] Query stream profile! size= 9, sensorType=OB_SENSOR_IR
+[12/14 22:11:48.043775][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 30}
+[12/14 22:11:48.043780][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 5}
+[12/14 22:11:48.043784][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 10}
+[12/14 22:11:48.043788][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 15}
+[12/14 22:11:48.043792][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 30}
+[12/14 22:11:48.043796][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 5}
+[12/14 22:11:48.043800][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 10}
+[12/14 22:11:48.043803][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 15}
+[12/14 22:11:48.043807][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 1280, height: 800, fps: 7}
+[12/14 22:11:48.043852][debug][51114][LinuxPal.cpp:269] Uvc backend have been set to LibUVC(1)
+[12/14 22:11:48.051036][warning][51114][ObLibuvcDevicePort.cpp:51] uvc_open  path=1-3.2-6.0 already opened
+[12/14 22:11:48.051999][warning][51114][ObLibuvcDevicePort.cpp:54] uvc_open  path=1-3.2-6.0 failed,return res:$-6
+[12/14 22:11:48.052532][info][51116][OpenNIDevice.cpp:41] OpenNI device destroyed! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:48.052571][info][51116][OpenNIVideoSensor.cpp:1014] OpenNIVideoSensor destroyed! sensorType=OB_SENSOR_IR
+[12/14 22:11:48.052697][debug][51116][FrameProcessor.cpp:103] FrameProcessor destroyed! @281471956865856
+[12/14 22:11:48.052717][debug][51116][VendorCommand.cpp:213] destructor ffff4c002d20
+[12/14 22:11:48.052727][debug][51116][VendorCommand.cpp:460] disableHeartBeat heartBeatHelper_: 0
+[12/14 22:11:48.052734][debug][51116][HostProtocol.cpp:139] ~HostProtocol()
+[12/14 22:11:48.053287][debug][51121][HostProtocol.cpp:167] emitTranDataFutureSignalThread_ finish
+[12/14 22:11:48.433349][debug][51114][DeviceManager.cpp:109] DeviceManager  createDevice...
+[12/14 22:11:48.434606][debug][51114][UsbDeviceEnumerator.cpp:288] UsbDeviceEnumerator createDevice...
+[12/14 22:11:48.434937][error][51114][HandleLibusb.hpp:89] failed to claim usb interface: 0, error: OB_USB_STATUS_BUSY
+[12/14 22:11:48.440151][info][51114][OpenNIHostProtocol.cpp:567] Hardware versions: FW=5.8.23 (14), HW=0, Chip=7, Sensor=0, SYS=12
+[12/14 22:11:48.441971][error][51114][OpenNIHostProtocol.cpp:584] Get usb core type failed!
+[12/14 22:11:48.442015][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:48.443368][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:48.446009][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:48.447537][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:48.447565][debug][51114][OpenNIHostProtocol.cpp:690] Getting the fixed params...
+[12/14 22:11:48.449232][debug][51114][OpenNIHostProtocol.cpp:730] Reading sensor serial number...
+[12/14 22:11:48.450783][info][51114][OpenNISensorFirmware.cpp:1185] Sensor serial number:CC1V45200EA
+[12/14 22:11:48.452660][debug][51114][OpenNIHostProtocol.cpp:802] Reading sensor platform string...
+[12/14 22:11:48.454513][info][51114][OpenNISensorFirmware.cpp:1213] Firmware version RD1001
+[12/14 22:11:48.456009][info][51114][OpenNISensorFirmware.cpp:1219] Device frequency 31.25
+[12/14 22:11:48.456062][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:48.456090][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 1 supported presets...
+[12/14 22:11:48.457525][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:48.457676][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 2 supported presets...
+[12/14 22:11:48.503749][debug][51114][OpenNISensorParams.cpp:110] set property DepthMirror(0)
+[12/14 22:11:48.505573][debug][51114][OpenNISensorParams.cpp:121] DepthMirror(0)was successfully set.
+[12/14 22:11:48.505641][debug][51114][OpenNISensorFirmware.cpp:1231] OpenNI camera params read.
+[12/14 22:11:48.687634][debug][51114][OpenNISensorFirmware.cpp:2053] OpenNI camera params read end.
+[12/14 22:11:48.692584][info][51114][OpenNISensorFirmware.cpp:150] OpenNI2 camera support Watchdog function.
+[12/14 22:11:48.692668][debug][51114][OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[12/14 22:11:48.692682][debug][51114][OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[12/14 22:11:48.692692][debug][51114][OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[12/14 22:11:48.692699][debug][51114][OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[12/14 22:11:48.692704][debug][51114][OpenNISensorIO.cpp:60] Opening endpoint 0x84  for image...
+[12/14 22:11:48.692709][debug][51114][OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[12/14 22:11:48.692714][debug][51114][OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[12/14 22:11:48.692775][debug][51114][OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[12/14 22:11:48.692781][debug][51114][OpenNISensorIO.cpp:87] Endpoints open end.
+[12/14 22:11:48.692793][debug][51114][VendorCommand.cpp:205] VendorCommand constructor ffff4c042c00
+[12/14 22:11:48.692800][debug][51114][OpenNIDevice.cpp:190] init sensor map start!
+[12/14 22:11:48.692814][debug][51114][OpenNIDevice.cpp:204] init sensor map done!
+[12/14 22:11:48.692898][debug][51114][PropertyAccessor.cpp:50] get firmware data success! propertyId: 1000, dataLen: 164
+[12/14 22:11:48.692910][info][51114][AbstractDevice.cpp:117] 	- Firmware version: RD1001
+[12/14 22:11:48.693077][debug][51114][OpenNIDevice.cpp:244] Init depth process param start!
+[12/14 22:11:48.693110][debug][51114][OpenNIDevice.cpp:259] Device baseline: 39.623146, fx:951.2432861328125
+[12/14 22:11:48.693118][debug][51114][OpenNIDevice.cpp:290] Init depth process param done!
+[12/14 22:11:48.693142][info][51114][OpenNIDevice.cpp:37] OpenNI device created! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:48.693152][debug][51114][UsbDeviceEnumerator.cpp:352] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:48.693163][info][51114][DeviceManager.cpp:150] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:48.693412][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.693902][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.695841][debug][51114][FrameProcessor.cpp:82] FrameProcessor init with 2 blocks! @281471957126064
+[12/14 22:11:48.695907][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.695918][debug][51114][FrameProcessor.cpp:90]  - block: FrameUnpacker, status: enable
+[12/14 22:11:48.695927][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:48.695932][debug][51114][FrameProcessor.cpp:90]  - block: FrameMirror, status: disable
+[12/14 22:11:48.695946][info][51114][OpenNIDevice.cpp:509] IR sensor has been created!
+[12/14 22:11:48.695993][debug][51114][OpenNIVideoSensor.cpp:857] Query stream profile! size= 9, sensorType=OB_SENSOR_IR
+[12/14 22:11:48.696010][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 30}
+[12/14 22:11:48.696015][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 5}
+[12/14 22:11:48.696020][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 10}
+[12/14 22:11:48.696024][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 15}
+[12/14 22:11:48.696028][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 30}
+[12/14 22:11:48.696032][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 5}
+[12/14 22:11:48.696036][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 10}
+[12/14 22:11:48.696040][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 15}
+[12/14 22:11:48.696044][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 1280, height: 800, fps: 7}
+[12/14 22:11:48.696077][debug][51114][LinuxPal.cpp:269] Uvc backend have been set to LibUVC(1)
+[12/14 22:11:48.741351][warning][51114][ObLibuvcDevicePort.cpp:51] uvc_open  path=1-3.2-6.0 already opened
+[12/14 22:11:48.741450][warning][51114][ObLibuvcDevicePort.cpp:54] uvc_open  path=1-3.2-6.0 failed,return res:$-6
+[12/14 22:11:48.742111][info][51116][OpenNIDevice.cpp:41] OpenNI device destroyed! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:48.742170][info][51116][OpenNIVideoSensor.cpp:1014] OpenNIVideoSensor destroyed! sensorType=OB_SENSOR_IR
+[12/14 22:11:48.742298][debug][51116][FrameProcessor.cpp:103] FrameProcessor destroyed! @281471957126064
+[12/14 22:11:48.742318][debug][51116][VendorCommand.cpp:213] destructor ffff4c042c00
+[12/14 22:11:48.742328][debug][51116][VendorCommand.cpp:460] disableHeartBeat heartBeatHelper_: 0
+[12/14 22:11:48.742334][debug][51116][HostProtocol.cpp:139] ~HostProtocol()
+[12/14 22:11:48.742468][debug][51122][HostProtocol.cpp:167] emitTranDataFutureSignalThread_ finish
+[12/14 22:11:49.110582][debug][51114][DeviceManager.cpp:109] DeviceManager  createDevice...
+[12/14 22:11:49.110655][debug][51114][UsbDeviceEnumerator.cpp:288] UsbDeviceEnumerator createDevice...
+[12/14 22:11:49.110914][error][51114][HandleLibusb.hpp:89] failed to claim usb interface: 0, error: OB_USB_STATUS_BUSY
+[12/14 22:11:49.112542][info][51114][OpenNIHostProtocol.cpp:567] Hardware versions: FW=5.8.23 (14), HW=0, Chip=7, Sensor=0, SYS=12
+[12/14 22:11:49.114035][error][51114][OpenNIHostProtocol.cpp:584] Get usb core type failed!
+[12/14 22:11:49.114068][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:49.115491][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:49.118101][debug][51114][OpenNIHostProtocol.cpp:665] Requesting KeepAlive...
+[12/14 22:11:49.119500][debug][51114][OpenNIHostProtocol.cpp:672] Got KeepAlive Reply.
+[12/14 22:11:49.119517][debug][51114][OpenNIHostProtocol.cpp:690] Getting the fixed params...
+[12/14 22:11:49.121013][debug][51114][OpenNIHostProtocol.cpp:730] Reading sensor serial number...
+[12/14 22:11:49.122502][info][51114][OpenNISensorFirmware.cpp:1185] Sensor serial number:CC1V45200EA
+[12/14 22:11:49.124272][debug][51114][OpenNIHostProtocol.cpp:802] Reading sensor platform string...
+[12/14 22:11:49.126025][info][51114][OpenNISensorFirmware.cpp:1213] Firmware version RD1001
+[12/14 22:11:49.127574][info][51114][OpenNISensorFirmware.cpp:1219] Device frequency 31.25
+[12/14 22:11:49.127597][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:49.127619][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 1 supported presets...
+[12/14 22:11:49.129401][debug][51114][OpenNIHostProtocol.cpp:879] Update supported depth video modes from firmware
+[12/14 22:11:49.129433][debug][51114][OpenNIHostProtocol.cpp:915] Reading CMOS 2 supported presets...
+[12/14 22:11:49.175565][debug][51114][OpenNISensorParams.cpp:110] set property DepthMirror(0)
+[12/14 22:11:49.177268][debug][51114][OpenNISensorParams.cpp:121] DepthMirror(0)was successfully set.
+[12/14 22:11:49.177302][debug][51114][OpenNISensorFirmware.cpp:1231] OpenNI camera params read.
+[12/14 22:11:49.361649][debug][51114][OpenNISensorFirmware.cpp:2053] OpenNI camera params read end.
+[12/14 22:11:49.364897][info][51114][OpenNISensorFirmware.cpp:150] OpenNI2 camera support Watchdog function.
+[12/14 22:11:49.364969][debug][51114][OpenNISensorIO.cpp:29] Opening endpoint 0x81 for depth...
+[12/14 22:11:49.364981][debug][51114][OpenNISensorIO.cpp:41] Depth endpoint(0x81) was successfully opened.
+[12/14 22:11:49.364988][debug][51114][OpenNISensorIO.cpp:48] Opening endpoint 0x82 for IR...
+[12/14 22:11:49.364993][debug][51114][OpenNISensorIO.cpp:54] IR endpoint(0x82) was successfully opened.
+[12/14 22:11:49.364997][debug][51114][OpenNISensorIO.cpp:60] Opening endpoint 0x84  for image...
+[12/14 22:11:49.365001][debug][51114][OpenNISensorIO.cpp:65] Image endpoint is not supported...
+[12/14 22:11:49.365004][debug][51114][OpenNISensorIO.cpp:75] Opening endpoint 0x83 for misc...
+[12/14 22:11:49.365007][debug][51114][OpenNISensorIO.cpp:80] Misc endpoint is not supported...
+[12/14 22:11:49.365011][debug][51114][OpenNISensorIO.cpp:87] Endpoints open end.
+[12/14 22:11:49.365020][debug][51114][VendorCommand.cpp:205] VendorCommand constructor ffff4c04f9b0
+[12/14 22:11:49.365025][debug][51114][OpenNIDevice.cpp:190] init sensor map start!
+[12/14 22:11:49.365037][debug][51114][OpenNIDevice.cpp:204] init sensor map done!
+[12/14 22:11:49.365094][debug][51114][PropertyAccessor.cpp:50] get firmware data success! propertyId: 1000, dataLen: 164
+[12/14 22:11:49.365154][info][51114][AbstractDevice.cpp:117] 	- Firmware version: RD1001
+[12/14 22:11:49.365280][debug][51114][OpenNIDevice.cpp:244] Init depth process param start!
+[12/14 22:11:49.365308][debug][51114][OpenNIDevice.cpp:259] Device baseline: 39.623146, fx:951.2432861328125
+[12/14 22:11:49.365314][debug][51114][OpenNIDevice.cpp:290] Init depth process param done!
+[12/14 22:11:49.365334][info][51114][OpenNIDevice.cpp:37] OpenNI device created! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:49.365341][debug][51114][UsbDeviceEnumerator.cpp:352] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:49.365350][info][51114][DeviceManager.cpp:150] Device created successfully! Name: DaBai DC1, PID: 0x0657, SN/ID: 
+[12/14 22:11:49.365383][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:49.365399][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:49.365762][debug][51114][FrameProcessor.cpp:82] FrameProcessor init with 2 blocks! @281471957143760
+[12/14 22:11:49.365787][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:49.365796][debug][51114][FrameProcessor.cpp:90]  - block: FrameUnpacker, status: enable
+[12/14 22:11:49.365805][debug][51114][FrameProcessingBlock.cpp:26] Block created with frame queue size: 10
+[12/14 22:11:49.365810][debug][51114][FrameProcessor.cpp:90]  - block: FrameMirror, status: disable
+[12/14 22:11:49.365820][info][51114][OpenNIDevice.cpp:509] IR sensor has been created!
+[12/14 22:11:49.365863][debug][51114][OpenNIVideoSensor.cpp:857] Query stream profile! size= 9, sensorType=OB_SENSOR_IR
+[12/14 22:11:49.365877][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 30}
+[12/14 22:11:49.365882][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 5}
+[12/14 22:11:49.365887][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 10}
+[12/14 22:11:49.365891][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 15}
+[12/14 22:11:49.365895][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 320, height: 200, fps: 30}
+[12/14 22:11:49.365900][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 5}
+[12/14 22:11:49.365904][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 10}
+[12/14 22:11:49.365908][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 640, height: 400, fps: 15}
+[12/14 22:11:49.365912][debug][51114][OpenNIVideoSensor.cpp:859]  - {type: OB_STREAM_IR, format: OB_FORMAT_Y10, width: 1280, height: 800, fps: 7}
+[12/14 22:11:49.365941][debug][51114][LinuxPal.cpp:269] Uvc backend have been set to LibUVC(1)
+[12/14 22:11:49.383963][warning][51114][ObLibuvcDevicePort.cpp:51] uvc_open  path=1-3.2-6.0 already opened
+[12/14 22:11:49.384108][warning][51114][ObLibuvcDevicePort.cpp:54] uvc_open  path=1-3.2-6.0 failed,return res:$-6
+[12/14 22:11:51.830857][info][51091][OpenNIDevice.cpp:41] OpenNI device destroyed! PID: 0x0657, SN: CC1V45200EA
+[12/14 22:11:51.830954][info][51091][OpenNIVideoSensor.cpp:1014] OpenNIVideoSensor destroyed! sensorType=OB_SENSOR_IR
+[12/14 22:11:51.831007][debug][51091][FrameProcessor.cpp:103] FrameProcessor destroyed! @281471957143760
+[12/14 22:11:51.831023][debug][51091][VendorCommand.cpp:213] destructor ffff4c04f9b0
+[12/14 22:11:51.831034][debug][51091][VendorCommand.cpp:460] disableHeartBeat heartBeatHelper_: 0
+[12/14 22:11:51.831041][debug][51091][HostProtocol.cpp:139] ~HostProtocol()
+[12/14 22:11:51.831065][debug][51123][HostProtocol.cpp:167] emitTranDataFutureSignalThread_ finish
+[12/14 22:11:51.831295][debug][51091][Context.cpp:81] Context destroying ...
+[12/14 22:11:51.831315][debug][51091][DeviceManager.cpp:56] DeviceManager destroy ...
+[12/14 22:11:51.831324][debug][51091][DeviceManager.cpp:64] DeviceManager Destructors done
+[12/14 22:11:51.832454][info][51091][Context.cpp:84] Context destroyed

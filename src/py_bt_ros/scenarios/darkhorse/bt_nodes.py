@@ -1,5 +1,6 @@
 import math
 import json
+import random
 from modules.base_bt_nodes import (
     BTNodeList, Status, SyncAction, Node, 
     Sequence, Fallback, ReactiveSequence, ReactiveFallback, Parallel,
@@ -12,6 +13,7 @@ from std_msgs.msg import String, Bool
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
 from nav_msgs.msg import Odometry
+import ast
 
 # bb = blackboard 
 # ---------------------------------------------------------
@@ -24,27 +26,21 @@ DEPARTMENT_COORDINATES = {
     "정형외과":      {"x": 0.75, "y": -2.64, "w": 1.0},
     "신경과":        {"x": 2.83, "y": 1.17, "w": 1.0}
 }
+DEFAULT_DEPARTMENTS = ["진단검사의학과", "영상의학과", "내과", "정형외과", "신경과"]
+
 
 # ---------------------------------------------------------
-# 1. WaitForQR: QR(JotForm) 데이터 수신 및 경로 계획
+# 1. WaitForStart: QR 데이터 수신 -> blackboard 저장 -> 다음으로 진행
 # ---------------------------------------------------------
-# [중요] 상속 변경: ConditionWithROSTopics -> Node
-# 우리는 단순히 True/False 체크가 아니라, 데이터가 올 때까지 '대기(Running)' 상태를 유지해야 합니다.
-# [수정된 WaitForQR 전체 코드]
-# [수정 1] Node -> SyncAction 으로 변경 (run 함수 자동 지원)
 class WaitForQR(SyncAction):
     def __init__(self, name, agent):
-        # [핵심 수정 1] agent 대신 self._tick을 넘겨야 에러가 안 납니다!
         super().__init__(name, self._tick)
         self.agent = agent
         self.received_msg = None
-        
-        # [핵심 수정 2] agent.ros_bridge.node 경로 사용
+        self.done = False
+
         self.sub = agent.ros_bridge.node.create_subscription(
-            String, 
-            "/hospital/system_start", 
-            self._callback, 
-            10
+            String, "/hospital/qr_login", self._callback, 10
         )
         self.home_saved = False
 
@@ -53,55 +49,70 @@ class WaitForQR(SyncAction):
         print("[WaitForQR] QR 데이터 수신됨!")
 
     def _tick(self, agent, bb):
-        # 1. 초기 위치 저장
+        if self.done:
+            return Status.SUCCESS
+
         if not self.home_saved:
             if hasattr(agent, 'robot_pose') and agent.robot_pose is not None:
                 bb['home_pose'] = agent.robot_pose
-                bb['speak_text'] = "초기 위치가 저장되었습니다. 진료과로 이동을 시작합니다."
                 self.home_saved = True
-                print(f"[WaitForQR] 초기 위치 저장 완료")
 
-        # 2. 메시지가 없으면 -> 절대 움직이지 마! (RUNNING 반환)
         if self.received_msg is None:
-            # 여기서 RUNNING을 반환해야 트리가 다음 단계(Think/Move)로 안 넘어갑니다.
             return Status.RUNNING
 
-        # 3. 메시지 처리
         try:
             data = json.loads(self.received_msg.data)
-            dept_list = data.get("departments", [])
-            bb['department_queue'] = dept_list
+
             bb['patient_id'] = data.get("patient_id", "Unknown")
-            
-            print(f"[WaitForQR] 데이터 확인됨. 환자: {bb['patient_id']}")
-            
-            self.received_msg = None 
-            return Status.SUCCESS # 이제야 비로소 다음 단계로 이동 허가
-            
-        except json.JSONDecodeError:
+
+            # ✅ QR에 departments가 없으면 default 사용
+            raw_depts = data.get("departments", None)
+            if not raw_depts:  # None or [] or ""
+                raw_depts = DEFAULT_DEPARTMENTS
+
+            # ✅ 유효한 과만 남김
+            depts = [d for d in raw_depts if d in DEPARTMENT_COORDINATES]
+
+            bb['department_queue'] = list(depts) 
+            bb['remaining_depts']  = list(depts)
+
+            # 말하기
+            bb['speak_text'] = "접수가 완료되었습니다. 이동을 시작할게요."
+
+            print(f"[WaitForQR] 환자: {bb['patient_id']}")
+            print(f"[WaitForQR] 기본/QR 과 목록: {raw_depts}")
+            print(f"[WaitForQR] 유효 과 목록: {bb['remaining_depts']}")
+
+            self.received_msg = None
+            self.done = True
+            return Status.SUCCESS
+
+        except Exception as e:
+            print("[WaitForQR] parse fail:", e)
             self.received_msg = None
             return Status.RUNNING
+
+
+
         
 # ---------------------------------------------------------
 # [추가] Condition Nodes: 상태 체크용 노드
 # ---------------------------------------------------------
 class IsEmergencyPressed(ConditionWithROSTopics):
-    """
-    비상 정지 버튼이 눌렸는지 확인하는 노드
-    토픽: /emergency_stop (Bool) -> True이면 비상 상황
-    """
-    def __init__(self, name, agent):
-        super().__init__(name, agent, [
-            (Bool, "/emergency_stop", "emergency_flag")
-        ])
+    def __init__(self, name, agent, **kwargs):
+        super().__init__(name, agent, [(Bool, "/emergency_stop", "emergency_flag")], **kwargs)
 
-    def _predicate(self, agent, bb):
-        # 메시지가 캐시에 있으면 확인
-        if "emergency_flag" in self._cache:
-            is_pressed = self._cache["emergency_flag"].data
-            if is_pressed:
-                print("[Emergency] 비상 정지 버튼 감지됨!")
-                return True # 비상 상황임 (Condition True)
+    async def run(self, agent, bb):
+        # 메시지 없으면 "안 눌림"으로 처리 → FAILURE
+        if "emergency_flag" not in self._cache:
+            self.status = Status.FAILURE
+            return self.status
+
+        is_pressed = self._cache["emergency_flag"].data
+        self.status = Status.SUCCESS if is_pressed else Status.FAILURE
+        # 눌림은 계속 유지될 수 있으니 clear는 선택 (원하면 clear 해도 됨)
+        return self.status
+
         
         return False # 비상 상황 아님
 
@@ -128,28 +139,55 @@ class IsBatteryLow(ConditionWithROSTopics):
 # ---------------------------------------------------------
 class Think(SyncAction):
     def __init__(self, name, agent):
-        # [핵심 수정] 여기도 agent 대신 self._tick으로 변경 필수
         super().__init__(name, self._tick)
+        self.wait_min = 0
+        self.wait_max = 20
 
     def _tick(self, agent, bb):
-        queue = bb.get('department_queue', [])
-        
-        if len(queue) > 0:
-            next_dept = queue.pop(0)
-            coords = DEPARTMENT_COORDINATES.get(next_dept)
-            
-            if coords:
-                bb['current_target_name'] = next_dept
-                bb['current_target_coords'] = coords
-                bb['department_queue'] = queue
-                print(f"[Think] 다음 목적지: {next_dept}")
-                return Status.SUCCESS
-            else:
-                print(f"[Think] 좌표 없음: {next_dept}")
-                return Status.FAILURE
-        else:
+        remaining = bb.get('remaining_depts', [])
+        if remaining is None:
+            remaining = []
+
+        print("[Think DEBUG] remaining_depts =", remaining)
+
+        # 더 이상 갈 과가 없으면 루프 종료
+        if len(remaining) == 0:
             print("[Think] 모든 진료과 방문 완료.")
             return Status.FAILURE
+
+        # ✅ 출발할 때마다 대기인원 랜덤 생성
+        waiting_counts = {d: random.randint(self.wait_min, self.wait_max) for d in remaining}
+
+        # ✅ 최소 대기인원 과 선택 (동점이면 랜덤)
+        min_wait = min(waiting_counts.values())
+        candidates = [d for d, w in waiting_counts.items() if w == min_wait]
+        next_dept = random.choice(candidates)
+
+        coords = DEPARTMENT_COORDINATES.get(next_dept)
+        if not coords:
+            print(f"[Think] 좌표 없음: {next_dept}")
+            # 좌표 없는 항목 제거하고 다음 tick에 다시 고르게
+            remaining.remove(next_dept)
+            bb['remaining_depts'] = remaining
+            return Status.RUNNING
+
+        # ✅ 목표 세팅
+        bb['current_target_name'] = next_dept
+        bb['current_target_coords'] = coords
+
+        # ✅ 방문 처리(다음 선택에서 제외)
+        remaining.remove(next_dept)
+        bb['remaining_depts'] = remaining
+
+        # ✅ Think 다음 SpeakAction이 말할 멘트 세팅
+        bb['speak_text'] = f"{next_dept}로 이동할게요. 대기인원 {waiting_counts[next_dept]}명."
+
+        print(f"[Think] 후보 대기: {waiting_counts}")
+        print(f"[Think] 선택: {next_dept} (wait={waiting_counts[next_dept]})")
+        return Status.SUCCESS
+
+
+
 # ---------------------------------------------------------
 # 3. Move: Nav2 Action을 이용한 이동
 # ---------------------------------------------------------
@@ -157,10 +195,12 @@ class Move(ActionWithROSAction):
     """
     blackboard['current_target_coords']로 이동 (Nav2 NavigateToPose)
     """
+    
     def __init__(self, name, agent):
         ns = agent.ros_namespace or ""
         # Nav2의 기본 액션 토픽: /navigate_to_pose
-        super().__init__(name, agent, (NavigateToPose, 'navigate_to_pose'))
+        super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
+
 
     def _build_goal(self, agent, bb):
         coords = bb.get('current_target_coords')
@@ -191,27 +231,26 @@ class Move(ActionWithROSAction):
 # ---------------------------------------------------------
 # 4. Doctor: 의료진 대시보드 입력 대기
 # ---------------------------------------------------------
-class Doctor(ConditionWithROSTopics):
-    """
-    의료진이 진단을 완료하고 '다음' 버튼을 누르면 메시지를 보낸다고 가정.
-    토픽: /hospital/doctor_input (Bool)
-    """
+class WaitDoctorDone(SyncAction):
     def __init__(self, name, agent):
-        super().__init__(name, agent, [
-            (Bool, "/hospital/doctor_input", "doctor_signal")
-        ])
+        super().__init__(name, self._tick)
+        self._done = False
+        self.sub = agent.ros_bridge.node.create_subscription(
+            Bool, "/hospital/doctor_input", self._cb, 10
+        )
 
-    def _predicate(self, agent, bb):
-        # 메시지가 들어왔는지 확인
-        if "doctor_signal" in self._cache:
-            msg = self._cache["doctor_signal"]
-            if msg.data is True:
-                print("[Doctor] 진료 완료 확인. 다음 단계로.")
-                del self._cache["doctor_signal"] # 사용한 신호 삭제
-                return True
-        
-        # 메시지 올 때까지 대기 (RUNNING)
-        return False
+    def _cb(self, msg: Bool):
+        if msg.data is True:
+            self._done = True
+
+    def _tick(self, agent, bb):
+        if not self._done:
+            return Status.RUNNING
+
+        self._done = False  # 다음 과를 위해 리셋
+        bb['speak_text'] = "다음 진료과로 이동할게요."
+        return Status.SUCCESS
+
 
 # ---------------------------------------------------------
 # 5. Return: 초기 위치로 복귀
@@ -272,95 +311,129 @@ class KeepRunningUntilFailure(Node):
 # 6. SpeakAction: TTS 액션 노드
 # ---------------------------------------------------------
 class SpeakAction(ActionWithROSAction):
-    """
-    Docstring for SpeakActon
-    TTS 액션 서버 노드: limo_tts/limo_tts/speak_text 사용
-    added date 2025/dec/14 by Raybeak    
-    """
-    def __init__ (self, name, agent):
+    def __init__(self, name, agent):
         super().__init__(name, agent, (speakActionMsg, 'speak_text'))
 
     def _build_goal(self, agent, bb):
-        #text_to_speak = f"{bb.get('current_target_name', '알 수 없음')} 에 도착 했습니다."
-       
         text_to_speak = bb.pop('speak_text', None)
+
+        # ✅ 말할 내용 없으면 goal을 만들지 않음 (베이스에서 SUCCESS로 처리하게 해둠)
         if not text_to_speak:
-            return Status.SUCCESS  # 말할 내용이 없으면 실행 안 함
-        
+            return None
+
         goal = speakActionMsg.Goal()
         goal.text = text_to_speak
         print(f"[Speak] TTS 요청: {text_to_speak}")
-        return goal   
+        return goal
+
    
-    """def _tick(self, agent, bb):
-        # 1. Goal 객체 생성
-        goal_msg = Speak.Goal()
-        
-        # 2. 텍스트 할당 (blackboard에서 가져오거나 직접 입력)
-        goal_msg.text = "환자를 확인했습니다"  # 혹은 bb['tts_text']
-        
-        # 3. Goal 객체를 전송 (문자열이 아닌 goal_msg를 보내야 함)
-        # base_bt_nodes_ros.py가 이 goal_msg를 받도록 수정되어야 합니다.
-        self.client.send_goal_async(goal_msg).add_done_callback(self._on_goal_response)
-        
-        return Status.RUNNING"""
+
 
 
 # ---------------------------------------------------------
 # 7. MonitorSpeed: 로봇 속도 모니터링 조건 노드
 # ---------------------------------------------------------
-class MonitorSpeed(ConditionWithROSTopics):
-    """
-    로봇의 속도를 모니터링하는 노드
-    토픽: /odom (nav_msgs/Odometry)
-    기능: 속도가 제한 속도(예: 0.8 m/s) 이하이면 SUCCESS(True), 초과하면 FAILURE(False)
-    """
+class WaitSpeedOK(SyncAction):
     def __init__(self, name, agent):
-        super().__init__(name, agent, [
-            (Odometry, "/odom", "odom_msg")
-        ])
-        self.limit = 0.8  # 제한 속도 설정 (m/s)
+        super().__init__(name, self._tick)
+        self.limit = 0.8
+        self._odom = None
+        self._warned = False
+        self.sub = agent.ros_bridge.node.create_subscription(
+            Odometry, "/odom", self._cb, 10
+        )
 
-    def _predicate(self, agent, bb):
-        if "odom_msg" in self._cache:
-            odom = self._cache["odom_msg"]
-            # 선속도(linear.x) 확인
-            current_speed = abs(odom.twist.twist.linear.x)
-            
-            if current_speed > self.limit:
-                print(f"[MonitorSpeed] 과속 감지! 현재 속도: {current_speed:.2f} m/s")
-                return False  # 과속이면 실패 처리 (-> Fallback에서 Stop 동작 유도 등)
-            
-        # 데이터가 없거나 속도가 정상이면 통과
-        return True 
+    def _cb(self, msg: Odometry):
+        self._odom = msg
+
+    def _tick(self, agent, bb):
+        if self._odom is None:
+            return Status.SUCCESS
+
+        v = abs(self._odom.twist.twist.linear.x)
+        if v > self.limit:
+            if not self._warned:
+                bb['speak_text'] = f"속도가 빨라요. {self.limit} 이하로 부탁해."
+                self._warned = True
+            return Status.SUCCESS   # ✅ Move 막지 않음
+
+        self._warned = False
+        return Status.SUCCESS
+
+
+
+class SetAbort(SyncAction):
+    def __init__(self, name, agent):
+        super().__init__(name, self._tick)
+
+    def _tick(self, agent, bb):
+        bb['abort'] = True
+        bb['speak_text'] = "비상 호출이 감지됐어. 지금 복귀할게."
+        return Status.SUCCESS
+
+
+class CheckAbort(SyncAction):
+    def __init__(self, name, agent):
+        super().__init__(name, self._tick)
+
+    def _tick(self, agent, bb):
+        if bb.get('abort', False):
+            # 루프 깨기용 FAILURE
+            return Status.FAILURE
+        return Status.SUCCESS
+
+
+class SendDiagnosisEmail(SyncAction):
+    """
+    BT에서 '메일 보내라' 요청을 publish만 하는 노드
+    - topic: /hospital/send_diagnosis_email (String JSON)
+    """
+    def __init__(self, name, agent, topic="/hospital/send_diagnosis_email", **kwargs):
+        super().__init__(name, self._tick, **kwargs)
+        self.ros = agent.ros_bridge
+        self.pub = self.ros.node.create_publisher(String, topic, 10)
+        self.topic = topic
+
+    def _tick(self, agent, bb):
+        payload = {
+            "patient_id": bb.get("patient_id", "Unknown"),
+            "email": bb.get("patient_email") or bb.get("email"),
+            "request": "send_diagnosis_email"
+        }
+        msg = String()
+        msg.data = json.dumps(payload, ensure_ascii=False)
+        self.pub.publish(msg)
+
+        print(f"[SendDiagnosisEmail] published -> {self.topic}: {msg.data}")
+        return Status.SUCCESS
 
 # ---------------------------------------------------------
 # 노드 등록 (수정본)
 # ---------------------------------------------------------
 
-# 1. 액션 노드 이름 등록
 CUSTOM_ACTION_NODES = [
     'WaitForQR',
     'SpeakAction',
     'Think',
+    'WaitSpeedOK',
     'Move',
-    'ReturnHome'
+    'WaitDoctorDone',
+    'ReturnHome',
+    'SendDiagnosisEmail',
+    'SetAbort',
+    'CheckAbort',
 ]
 
-# 2. 조건 노드 이름 등록 (IsEmergencyPressed 추가!)
 CUSTOM_CONDITION_NODES = [
     'IsEmergencyPressed',
     'IsBatteryLow',
-    'Doctor',
-        # Doctor는 입력을 기다리는 조건(Condition) 성격이 강하므로 여기 넣는 게 맞을 수도 있습니다.
-              # (위에서 ConditionWithROSTopics를 상속받았다면 여기에 넣으세요.)
-    'MonitorSpeed',
 ]
 
-# 3. BTNodeList에 확장 (Extend)
 BTNodeList.ACTION_NODES.extend(CUSTOM_ACTION_NODES)
-BTNodeList.CONDITION_NODES.extend(CUSTOM_CONDITION_NODES) # 이 줄이 꼭 있어야 합니다!
+BTNodeList.CONDITION_NODES.extend(CUSTOM_CONDITION_NODES)
 BTNodeList.CONTROL_NODES.append('KeepRunningUntilFailure')
+# ReactiveFallback/ReactiveSequence는 이미 base에 있으면 추가 불필요
+
 
 print(f"Registered Actions: {BTNodeList.ACTION_NODES}")
 print(f"Registered Conditions: {BTNodeList.CONDITION_NODES}")

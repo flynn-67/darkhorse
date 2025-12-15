@@ -2,34 +2,86 @@
 <root BTCPP_format="4">
   <BehaviorTree ID="MainTree">
 
-      <Sequence name="NormalSequence">
-        <WaitForQR/>
-        <SpeakAction/>
-        
-        <KeepRunningUntilFailure>
-          <Sequence>
-            <Think/>
-            
+    <Sequence name="HospitalFlow">
+      <!-- STEP 1: 시작 트리거(QR / 데스크탑) -->
+      <WaitForQR/> 
 
-            <Parallel success_threshold="1" failure_threshold="1">
-              <Sequence name="EmergencyRoutine">
-                <IsEmergencyPressed/> <ReturnHome/>         </Sequence>
-              <MonitorSpeed/> 
+
+      <!-- STEP 2: 출발 안내 -->
+      <SpeakAction/> 
+
+      <!-- STEP 3~4: 진료과 순회 루프 (Think가 FAILURE면 종료) -->
+      <KeepRunningUntilFailure name="VisitLoop">
+        <Sequence name="PerDepartment">
+
+          <!-- 다음 목적지 선택(대기인원 최소) -->
+          <Think/>
+
+          <!-- (선택) 이동 안내 멘트: Think에서 speak_text 세팅해주면 여기서 말함 -->
+          <SpeakAction/>
+
+          <!-- 이동 중 Emergency 우선 인터럽트 -->
+          <ReactiveFallback name="EmergencyOrMove">
+            <!-- Emergency branch: 눌리면 즉시 복귀 + abort 플래그 -->
+            <Sequence name="EmergencyReturn">
+              <IsEmergencyPressed/>
+              <SetAbort/>
+              <SpeakAction/>
+              <ReturnHome/>
+            </Sequence>
+
+            <!-- Normal move branch -->
+            <ReactiveSequence name="NormalMoveReactive">
+              <WaitSpeedOK/>
               <Move/>
-            </Parallel>
-            
-            <SpeakAction/>
-            <Doctor/>
-          </Sequence>
-        </KeepRunningUntilFailure>
-        
-        <ReturnHome/>
-      </Sequence>
+            </ReactiveSequence>
+
+          </ReactiveFallback>
+
+          <!-- Emergency 처리 후에는 이 노드가 FAILURE로 루프를 깨줌 -->
+          <CheckAbort/>
+
+          <!-- 도착 멘트 (Move에서 speak_text 세팅) -->
+          <SpeakAction/>
+
+          <!-- STEP 4: 의사 대시보드 입력 완료 기다림 -->
+          <WaitDoctorDone/>
+
+          <!-- 다음 목적지로 간다는 멘트(WaitDoctorDone에서 speak_text 세팅) -->
+          <SpeakAction/>
+
+        </Sequence>
+      </KeepRunningUntilFailure>
+
+      <!-- STEP 5: 전부 돌면 귀환 -->
+      <ReturnHome/>
+
+      <!-- STEP 6: 진단서 메일 발송(hospital_web_ui) -->
+      <SendDiagnosisEmail/>
+
+    </Sequence>
 
   </BehaviorTree>
-  
+
   <TreeNodesModel>
+    <!-- Actions -->
+    <Action ID="WaitForQR"/>
+    <Action ID="SpeakAction"/>
+    <Action ID="Think"/>
+    <Action ID="WaitSpeedOK"/>
+    <Action ID="Move"/>
+    <Action ID="ReturnHome"/>
+    <Action ID="WaitDoctorDone"/>
+    <Action ID="SendDiagnosisEmail"/>
+    <Action ID="SetAbort"/>
+    <Action ID="CheckAbort"/>
+    <Control ID="ReactiveSequence"/>
+
+    <!-- Conditions -->
     <Condition ID="IsEmergencyPressed"/>
-    <Action ID="MonitorSpeed"/>
+
+    <!-- Controls -->
+    <Control ID="KeepRunningUntilFailure"/>
+    <Control ID="ReactiveFallback"/>
   </TreeNodesModel>
 </root>
