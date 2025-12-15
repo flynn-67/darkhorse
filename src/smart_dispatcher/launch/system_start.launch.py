@@ -10,7 +10,7 @@ def generate_launch_description():
     # [사진 기반 경로 설정]
     nav_launch_pkg = 'wego'
     map_pkg = 'wego_2d_nav'
-    map_file_name = 'map_1764225427.yaml' 
+    map_file_name = 'map_67.yaml' 
     # =========================================================
 
     map_dir = os.path.join(
@@ -27,37 +27,9 @@ def generate_launch_description():
         launch_arguments={'map': map_dir}.items()
     )
 
-    # 2. [수정] 로봇 두뇌 (Smart Dispatcher) - 주석 처리하여 실행 방지!
-    # (이게 켜져 있으면 QR 없이 혼자 돌아다닙니다)
-    """
-    dispatcher_node = TimerAction(
-        period=5.0,
-        actions=[
-            Node(
-                package='smart_dispatcher',
-                executable='dispatcher',
-                name='smart_dispatcher',
-                output='screen'
-            )
-        ]
-    )
-    """
 
-    # 3. 팀원 UI (Patient UI)
-    ui_node = TimerAction(
-        period=8.0,
-        actions=[
-            Node(
-                package='smart_hospital_system',
-                executable='patient_ui', 
-                name='patient_ui_node',
-                output='screen'
-            )
-        ]
-    )
+
 
     return LaunchDescription([
         wego_nav_launch,
-        # dispatcher_node, # <--- 여기도 주석 처리 필수!
-        ui_node
     ])

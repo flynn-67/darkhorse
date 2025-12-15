@@ -42,7 +42,7 @@
         </Sequence>
       </KeepRunningUntilFailure>
 
-      <ReturnHome/>
+      <GoToInfoDesk/>
 
       <SendDiagnosisEmail/>
 
