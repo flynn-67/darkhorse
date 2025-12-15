@@ -31,6 +31,7 @@ setup(
             'dispatcher = smart_dispatcher.smart_dispatcher_node:main',
             # ✅ [추가 2] 사이렌 노드 실행 명령어 등록
             'siren_node = smart_dispatcher.siren_node:main',
+            'ui_node = smart_dispatcher.ui_node:main',
         ],
     },
 )

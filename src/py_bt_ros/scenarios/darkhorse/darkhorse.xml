@@ -1,31 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4">
   <BehaviorTree ID="MainTree">
-
     <Sequence name="HospitalFlow">
-      <WaitForQR/> 
-
-
-      <SpeakAction/> 
+      <WaitForQR/>
+      <SpeakAction/>
 
       <KeepRunningUntilFailure name="VisitLoop">
         <Sequence name="PerDepartment">
-
           <Think/>
-
           <SpeakAction/>
 
           <ReactiveFallback name="EmergencyOrMove">
-            
+
             <Sequence name="EmergencyReturn">
               <IsEmergencyPressed/>
-              
-              <ControlSiren enable="true"/>
 
+              <ControlSiren enable="true"/>
               <SetAbort/>
               <SpeakAction/>
-              
-              <GoToInfoDesk/>
+
+              <ForceSuccess>
+                <GoToInfoDesk/>
+              </ForceSuccess>
 
               <ControlSiren enable="false"/>
             </Sequence>
@@ -38,22 +34,16 @@
           </ReactiveFallback>
 
           <CheckAbort/>
-
           <SpeakAction/>
 
           <WaitDoctorDone/>
-
           <SpeakAction/>
-
         </Sequence>
       </KeepRunningUntilFailure>
 
       <GoToInfoDesk/>
-
       <SendDiagnosisEmail/>
-
     </Sequence>
-
   </BehaviorTree>
 
   <TreeNodesModel>
@@ -63,20 +53,21 @@
     <Action ID="WaitSpeedOK"/>
     <Action ID="Move"/>
     <Action ID="ReturnHome"/>
-    <Action ID="GoToInfoDesk"/> 
+    <Action ID="GoToInfoDesk"/>
     <Action ID="WaitDoctorDone"/>
     <Action ID="SendDiagnosisEmail"/>
     <Action ID="SetAbort"/>
     <Action ID="CheckAbort"/>
-    <Control ID="ReactiveSequence"/>
+    <Action ID="ControlSiren">
+      <input_port name="enable" type="bool"/>
+    </Action>
 
     <Condition ID="IsEmergencyPressed"/>
+    <Condition ID="IsBatteryLow"/>
 
-    <Control ID="KeepRunningUntilFailure"/>
+    <Control ID="ReactiveSequence"/>
     <Control ID="ReactiveFallback"/>
-
-    <Action ID="ControlSiren">
-        <input_port name="enable" type="bool"/>
-    </Action>
+    <Control ID="KeepRunningUntilFailure"/>
+    <Control ID="ForceSuccess"/>
   </TreeNodesModel>
 </root>
