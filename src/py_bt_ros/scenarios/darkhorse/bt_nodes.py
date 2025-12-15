@@ -353,6 +353,23 @@ class SendDiagnosisEmail(SyncAction):
         print(f"[SendDiagnosisEmail] published -> {self.topic}: {msg.data}")
         return Status.SUCCESS
 
+#사이렌 제어
+class ControlSiren(SyncAction):
+    def __init__(self, name, agent, enable=True, **kwargs):
+        super().__init__(name, self._tick, **kwargs)
+        self.ros = agent.ros_bridge
+        self.pub = self.ros.node.create_publisher(Bool, "/cmd_siren", 10)
+        
+        self.enable_siren = True
+        if 'enable' in kwargs:
+            val = str(kwargs['enable']).lower()
+            self.enable_siren = (val == 'true')
+
+    def _tick(self, agent, bb):
+        msg = Bool()
+        msg.data = self.enable_siren
+        self.pub.publish(msg)
+        return Status.SUCCESS
 
 CUSTOM_ACTION_NODES = [
     'WaitForQR',
@@ -366,6 +383,7 @@ CUSTOM_ACTION_NODES = [
     'SendDiagnosisEmail',
     'SetAbort',
     'CheckAbort',
+    'ControlSiren',
 ]
 
 CUSTOM_CONDITION_NODES = [

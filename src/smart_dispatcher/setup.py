@@ -7,26 +7,30 @@ package_name = 'smart_dispatcher'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=find_packages(),   # <-- 반드시 이렇게 해야 함
+    packages=find_packages(),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        
+        # Launch 파일
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
 
-        # launch 파일 설치
-        (os.path.join('share', package_name, 'launch'),
-         glob('launch/*.launch.py')),
+        # ✅ [추가 1] Resource 폴더 통째로 복사 (wav 파일 인식용)
+        (os.path.join('share', package_name, 'resource'), glob('resource/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='flynn',
     maintainer_email='flynn@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Smart Dispatcher',
+    license='TODO',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'dispatcher = smart_dispatcher.smart_dispatcher_node:main',
+            # ✅ [추가 2] 사이렌 노드 실행 명령어 등록
+            'siren_node = smart_dispatcher.siren_node:main',
         ],
     },
 )

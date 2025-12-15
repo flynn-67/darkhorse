@@ -19,9 +19,15 @@
             
             <Sequence name="EmergencyReturn">
               <IsEmergencyPressed/>
+              
+              <ControlSiren enable="true"/>
+
               <SetAbort/>
               <SpeakAction/>
+              
               <GoToInfoDesk/>
+
+              <ControlSiren enable="false"/>
             </Sequence>
 
             <ReactiveSequence name="NormalMoveReactive">
@@ -57,7 +63,8 @@
     <Action ID="WaitSpeedOK"/>
     <Action ID="Move"/>
     <Action ID="ReturnHome"/>
-    <Action ID="GoToInfoDesk"/> <Action ID="WaitDoctorDone"/>
+    <Action ID="GoToInfoDesk"/> 
+    <Action ID="WaitDoctorDone"/>
     <Action ID="SendDiagnosisEmail"/>
     <Action ID="SetAbort"/>
     <Action ID="CheckAbort"/>
@@ -67,5 +74,9 @@
 
     <Control ID="KeepRunningUntilFailure"/>
     <Control ID="ReactiveFallback"/>
+
+    <Action ID="ControlSiren">
+        <input_port name="enable" type="bool"/>
+    </Action>
   </TreeNodesModel>
 </root>
