@@ -21,13 +21,16 @@ from nav_msgs.msg import Odometry
 # ==========================================
 INFO_DESK_NAME = "안내데스크"
 
+# 좌표: (0.08, 0.08)은 출발지(0,0) 근처입니다. 
+# 로봇이 벽 속에 있지 않다면 이동 가능한 좌표입니다.
 DEPARTMENT_COORDINATES = {
     "진단검사의학과": {"x": -2.0478696823120117, "y": 1.3148077726364136, "w": 1.0},
     "정형외과":      {"x": 4.325248718261719, "y": -1.067739486694336, "w": 1.0},
     "안내데스크":    {"x": 0.08828259259462357, "y": 0.08828259259462357, "w": 1.0},
 }
 DEFAULT_DEPARTMENTS = ["진단검사의학과", "정형외과"]
-# UI 상태 보고 헬퍼 (bt_nodes.py에서 필요)
+
+# UI 상태 보고 헬퍼
 def publish_ui_status(ros_node, text):
     pub = ros_node.create_publisher(String, '/hospital/nav_status', 10)
     msg = String()
@@ -39,9 +42,13 @@ def publish_ui_status(ros_node, text):
 # Action Nodes
 # ==========================================
 class GoToInfoDesk(ActionWithROSAction):
-    """안내데스크로 이동하는 Nav2 액션 노드 (비상 시 강제 성공 기능 포함)"""
+    """안내데스크로 이동하는 Nav2 액션 노드 (타임아웃 및 강제 성공 기능 포함)"""
     def __init__(self, name, agent):
         super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
+        # ✅ [필수 추가] 타임아웃 60초 설정
+        self.timeout_sec = 60.0
+        self.start_time = None
+        self.nav_goal_sent = False
 
     def _build_goal(self, agent, bb):
         coords = DEPARTMENT_COORDINATES.get(INFO_DESK_NAME)
@@ -56,17 +63,47 @@ class GoToInfoDesk(ActionWithROSAction):
         # UI 업데이트
         publish_ui_status(self.ros.node, "안내데스크 복귀 중 🏠")
         print("[GoToInfoDesk] 🏠 안내데스크로 복귀 시작")
+        
+        # ✅ [필수 추가] 시작 시간 기록
+        self.start_time = self.ros.node.get_clock().now()
+        self.nav_goal_sent = True
         return goal
 
-    # ✅ [핵심 수정: Robust Return] 이동 실패 시 비상 상황이면 SUCCESS 반환
+    # ✅ [핵심 기능] 이 함수가 없어서 멈췄던 것입니다!
+    # 60초 동안 도착 못하면 강제로 성공 처리하고 사이렌을 끄러 갑니다.
+    async def run(self, agent, bb):
+        # 1. 부모 로직 실행
+        status = await super().run(agent, bb)
+
+        # 2. 이동 중(RUNNING)이라면 시간 체크
+        if status == Status.RUNNING and self.nav_goal_sent:
+            now = self.ros.node.get_clock().now()
+            elapsed_time = (now - self.start_time).nanoseconds / 1e9
+            
+            # 60초 타임아웃 발생 시
+            if elapsed_time > self.timeout_sec:
+                print(f"[GoToInfoDesk] ⚠️ 60초 타임아웃! 이동 포기하고 사이렌 끕니다.")
+                
+                # Nav2 취소 요청
+                if self._action_client and self._goal_handle:
+                    self._action_client.cancel_goal_async(self._goal_handle)
+                
+                self.nav_goal_sent = False
+                # 비상 상황 종료를 위해 SUCCESS 반환 -> ControlSiren(false) 실행됨
+                return Status.SUCCESS
+            
+        return status
+
+    # ✅ [핵심 기능] 이동 실패해도 비상 상황이면 SUCCESS 반환
     def _interpret_result(self, result, agent, bb, status_code=None):
+        self.nav_goal_sent = False # 종료 플래그
+
         if status_code == GoalStatus.STATUS_SUCCEEDED:
             print("[GoToInfoDesk] ✅ 안내데스크 도착 (SUCCESS)")
             return Status.SUCCESS
         
-        # 만약 비상 상황이었다면 (SetAbort에서 bb['abort']=True 설정됨)
+        # 만약 비상 상황이었다면 (abort=True)
         if bb.get('abort', False):
-            # 이동 실패했더라도 사이렌을 끄기 위해 SUCCESS를 반환합니다.
             print(f"[GoToInfoDesk] ⚠️ 이동 실패했으나 비상 상황 종료를 위해 SUCCESS 반환.")
             publish_ui_status(self.ros.node, "복귀 완료 (강제)")
             return Status.SUCCESS
@@ -91,7 +128,7 @@ class WaitForQR(SyncAction):
         print(f"[WaitForQR] 📨 QR 데이터 수신: {msg.data}")
 
     def _tick(self, agent, bb):
-        # ✅ [핵심 수정: Reset] 새로운 환자/루프 시작 시 비상 상태 초기화
+        # ✅ 초기화 로직 (정상)
         if self.first_run:
             publish_ui_status(agent.ros_bridge.node, "환자 접수 대기 중... 📋")
             bb['abort'] = False  # 비상 상태 초기화
@@ -128,7 +165,6 @@ class WaitForQR(SyncAction):
 
 
 class Think(SyncAction):
-    """다음에 방문할 진료과를 결정 (대기인원 최소)"""
     def __init__(self, name, agent):
         super().__init__(name, self._tick)
         self.wait_min = 0; self.wait_max = 20
@@ -158,7 +194,6 @@ class Think(SyncAction):
 
 
 class Move(ActionWithROSAction):
-    """지정된 좌표로 이동하는 Nav2 액션 노드"""
     def __init__(self, name, agent):
         super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
 
@@ -189,7 +224,6 @@ class Move(ActionWithROSAction):
 
 
 class WaitDoctorDone(SyncAction):
-    """진료 완료 버튼(/hospital/doctor_input) 대기 노드"""
     def __init__(self, name, agent):
         super().__init__(name, self._tick)
         self._done = False
@@ -215,7 +249,6 @@ class WaitDoctorDone(SyncAction):
 
 
 class ReturnHome(ActionWithROSAction):
-    """모든 일정이 끝나고 안내데스크로 복귀"""
     def __init__(self, name, agent):
         super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
 
@@ -270,16 +303,14 @@ class IsEmergencyPressed(ConditionWithROSTopics):
     def __init__(self, name, agent, **kwargs):
         super().__init__(name, agent, [(Bool, "/emergency_trigger", "emergency_flag")], **kwargs)
 
-    # ✅ [핵심 수정: Latch] 이미 복귀 중이면 버튼이 떼어져도 True 반환
     async def run(self, agent, bb):
-        # 1. 이미 비상 복귀 중(abort=True)이라면? 버튼 상태와 관계없이 무조건 SUCCESS (복귀 절차 끝까지 수행)
+        # 1. 이미 비상 복귀 중(abort=True)이라면 무조건 SUCCESS
         if bb.get('abort', False):
             return Status.SUCCESS
 
         # 2. 버튼 상태 확인
         if "emergency_flag" not in self._cache: return Status.FAILURE
         is_pressed = self._cache["emergency_flag"].data
-        
         return Status.SUCCESS if is_pressed else Status.FAILURE
 
 
@@ -302,6 +333,7 @@ class SetAbort(SyncAction):
         return Status.SUCCESS
 
 
+# ✅ [NotAbort 유지] XML과 이름 일치시킴
 class NotAbort(SyncAction):
     def __init__(self, name, agent): super().__init__(name, self._tick)
     def _tick(self, agent, bb):
@@ -341,7 +373,6 @@ class ControlSiren(SyncAction):
 # Control Nodes
 # ==========================================
 class KeepRunningUntilFailure(Node):
-    """자식이 Failure를 반환할 때까지 계속 실행 (Loop)"""
     def __init__(self, name, children=None):
         super().__init__(name)
         self.children = children if children is not None else []
@@ -351,7 +382,6 @@ class KeepRunningUntilFailure(Node):
         if status == Status.FAILURE: return Status.FAILURE
         return Status.RUNNING
 
-# ❌ [제거] XML이 깔끔해지도록 ForceSuccess는 제거합니다. (GoToInfoDesk가 기능 내재화)
 
 # ==========================================
 # BT 노드 등록
@@ -366,6 +396,5 @@ CUSTOM_CONDITION_NODES = ['IsEmergencyPressed', 'IsBatteryLow']
 BTNodeList.ACTION_NODES.extend(CUSTOM_ACTION_NODES)
 BTNodeList.CONDITION_NODES.extend(CUSTOM_CONDITION_NODES)
 BTNodeList.CONTROL_NODES.append('KeepRunningUntilFailure')
-# BTNodeList.CONTROL_NODES.append('ForceSuccess') # ❌ XML에 ForceSuccess 없으므로 등록도 제거
 
 print(f"✅ 커스텀 노드 등록 완료: action={len(CUSTOM_ACTION_NODES)}, condition={len(CUSTOM_CONDITION_NODES)}")
