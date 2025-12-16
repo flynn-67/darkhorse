@@ -1,0 +1,24 @@
+// generated from rosidl_adapter/resource/action.idl.em
+// with input from limo_interfaces/action/Speak.action
+// generated code does not contain a copyright notice
+
+
+module limo_interfaces {
+  module action {
+    @verbatim (language="comment", text=
+      "Goal: 읽을 텍스트")
+    struct Speak_Goal {
+      string text;
+    };
+    @verbatim (language="comment", text=
+      "Result: 성공 여부")
+    struct Speak_Result {
+      boolean success;
+    };
+    @verbatim (language="comment", text=
+      "Feedback: 현재 진행률")
+    struct Speak_Feedback {
+      float progress;
+    };
+  };
+};

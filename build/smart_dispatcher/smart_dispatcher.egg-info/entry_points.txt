@@ -1,0 +1,4 @@
+[console_scripts]
+dispatcher = smart_dispatcher.smart_dispatcher_node:main
+siren_node = smart_dispatcher.siren_node:main
+ui_node = smart_dispatcher.ui_node:main

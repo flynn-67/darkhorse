@@ -13,12 +13,9 @@ from rcl_interfaces.msg import Parameter, ParameterValue
 
 
 DEPARTMENT_COORDINATES = {
-    "진단검사의학과": {"x": 0.48070189356803894, "y": 0.2762919068336487, "w": 1.0},
-    "영상의학과":    {"x": 6.578537940979004,  "y": 2.621462106704712,  "w": 1.0},
-    "내과":          {"x": 7.445363998413086,  "y": 0.5102964639663696, "w": 1.0},
-    "정형외과":      {"x": 0.753912627696991,  "y": -2.640972375869751, "w": 1.0},
-    "안내데스크":        {"x": 2.836460590362549,  "y": 1.1752597093582153, "w": 1.0},
-    
+    "진단검사의학과": {"x": -2.0478696823120117, "y": 1.3148077726364136, "w": 1.0},
+    "정형외과":      {"x": 4.325248718261719, "y": -1.067739486694336, "w": 1.0},
+    "안내데스크":    {"x": 0.08828259259462357, "y": 0.08828259259462357, "w": 1.0},
 }
 INFO_DESK_NAME = "안내데스크"
 
@@ -29,14 +26,14 @@ class SmartDispatcher(Node):
     출발할 때마다 랜덤 대기인원 생성 -> 최소 대기인원 과로 이동
     waypoint 도착 후 /hospital/next_waypoint(True) 오면 다음 출발
 
-    UI publish(/nav_status, /nav_current_target, /nav_current_speed, /hospital/waiting_counts) 제거 버전
+    + 도착 성공 시 /hospital/arrival_status(String)에 현재 과 이름 publish (doctor_ui_trigger 등이 사용)
     """
 
     def __init__(self):
         super().__init__('smart_dispatcher')
 
         # ---- 상태 ----
-        self.remaining_depts = []        # 아직 방문 안 한 과(후보)  (안내데스크 제외)
+        self.remaining_depts = []        # 아직 방문 안 한 과(후보) (안내데스크 제외)
         self.waiting_counts = {}         # {과: 대기인원}
         self.wait_min = 0
         self.wait_max = 20
@@ -50,16 +47,25 @@ class SmartDispatcher(Node):
         # ---- home 저장 ----
         self.home_pose = None
         self.home_saved = False
-        self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', self.cb_amcl_pose, 10)
+        self.create_subscription(
+            PoseWithCovarianceStamped, '/amcl_pose', self.cb_amcl_pose, 10
+        )
 
         # ---- Nav2 ----
         self.navigator = BasicNavigator()
-        self.navigator.waitUntilNav2Active()
+        # Nav2가 올라오지 않았으면 여기서 대기함 (필요하면 시뮬 상황에 맞게 조절)
+        try:
+            self.navigator.waitUntilNav2Active()
+        except Exception as e:
+            self.get_logger().warn(f"waitUntilNav2Active() 예외: {e}")
 
         # ---- 속도 (초기값 읽기) ----
         self.current_speed = self._get_initial_speed_from_velocity_smoother()
         self.min_speed = 0.10
         self.max_speed = 0.40
+
+        # ---- 도착 알림용 토픽 ----
+        self.pub_arrival_status = self.create_publisher(String, '/hospital/arrival_status', 10)
 
         # ---- Sub (입력) ----
         self.create_subscription(String,  '/hospital/patient_data',   self.cb_patient_data, 10)
@@ -68,12 +74,12 @@ class SmartDispatcher(Node):
         self.create_subscription(Bool,    '/nav_pause',               self.cb_pause, 10)
         self.create_subscription(Bool,    '/nav_emergency_home',      self.cb_emergency_home, 10)
 
-        self.get_logger().info("IDLE: QR 대기 중 (UI publish 제거 버전)")
+        self.get_logger().info("IDLE: QR 대기 중 (dispatcher ready)")
 
         # ---- 주기 타이머: Nav2 완료 체크 ----
         self.create_timer(0.1, self.loop)
 
-    # =============== 콜백들 ===============
+    # ---------------- 콜백 ----------------
     def cb_amcl_pose(self, msg: PoseWithCovarianceStamped):
         if self.home_saved:
             return
@@ -101,7 +107,6 @@ class SmartDispatcher(Node):
             self.get_logger().error(f"patient_data JSON parse fail: {e}")
             return
 
-        # ✅ 후보 구성(유효한 항목만) + ✅ 안내데스크 제외
         self.remaining_depts = [
             d for d in depts
             if (d in DEPARTMENT_COORDINATES) and (d != INFO_DESK_NAME)
@@ -148,13 +153,12 @@ class SmartDispatcher(Node):
             self.get_logger().info("PAUSED")
             return
 
-        # resume
         self.is_paused = False
+
         if self.is_emergency:
             self.get_logger().info("EMERGENCY: 복귀 중")
             return
 
-        # 도착 대기 상태면 재개할 게 없음
         if self.waiting_next:
             self.get_logger().info("ARRIVED: 다음 신호 대기(/hospital/next_waypoint)")
             return
@@ -193,7 +197,7 @@ class SmartDispatcher(Node):
         self.get_logger().info("EMERGENCY: HOME 복귀")
         self.navigator.goToPose(self.home_pose)
 
-    # =============== 메인 루프 ===============
+    # ---------------- 메인 루프 ----------------
     def loop(self):
         # emergency/home 복귀 중이면 완료 체크만
         if self.is_emergency:
@@ -206,24 +210,26 @@ class SmartDispatcher(Node):
                 self.is_emergency = False
             return
 
-        if self.is_paused:
+        if self.is_paused or self.waiting_next:
             return
 
-        if self.waiting_next:
-            return
+        if self.current_goal_pose is not None and self.navigator.isTaskComplete():
+            res = self.navigator.getResult()
 
-        if self.current_goal_pose is not None:
-            if self.navigator.isTaskComplete():
-                res = self.navigator.getResult()
-                if res == TaskResult.SUCCEEDED:
-                    self.get_logger().info(f"ARRIVED: {self.current_goal_name} (next_waypoint 대기)")
-                else:
-                    self.get_logger().info(f"FAILED: {self.current_goal_name} (next_waypoint 대기)")
-                self.waiting_next = True
+            if res == TaskResult.SUCCEEDED:
+                self.get_logger().info(f"ARRIVED: {self.current_goal_name} (next_waypoint 대기)")
 
-    # =============== 내부 유틸 ===============
+                # ✅ 도착 성공 방송
+                m = String()
+                m.data = self.current_goal_name
+                self.pub_arrival_status.publish(m)
+            else:
+                self.get_logger().info(f"FAILED: {self.current_goal_name} (next_waypoint 대기)")
+
+            self.waiting_next = True
+
+    # ---------------- 내부 유틸 ----------------
     def _refresh_waiting_counts(self):
-        # 남은 후보 과들에 대해 랜덤 대기인원 갱신
         self.waiting_counts = {
             d: random.randint(self.wait_min, self.wait_max)
             for d in self.remaining_depts
@@ -260,7 +266,10 @@ class SmartDispatcher(Node):
 
     def _get_initial_speed_from_velocity_smoother(self) -> float:
         client = self.create_client(GetParameters, '/velocity_smoother/get_parameters')
-        client.wait_for_service()
+        if not client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().warn("velocity_smoother/get_parameters 서비스 없음 -> 기본 0.25 사용")
+            return 0.25
+
         req = GetParameters.Request()
         req.names = ['max_velocity']
         fut = client.call_async(req)
@@ -278,7 +287,9 @@ class SmartDispatcher(Node):
 
     def _set_remote_param(self, node_name: str, param_name: str, value):
         client = self.create_client(SetParameters, f'{node_name}/set_parameters')
-        client.wait_for_service()
+        if not client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().warn(f"{node_name}/set_parameters 서비스 없음 -> {param_name} 설정 스킵")
+            return
 
         p = Parameter()
         p.name = param_name

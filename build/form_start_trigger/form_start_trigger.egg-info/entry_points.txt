@@ -1,0 +1,4 @@
+[console_scripts]
+start_limo_node = form_start_trigger.start_limo_node:main
+system_start_receiver_node = form_start_trigger.system_start_receiver_node:main
+webhook_node = form_start_trigger.webhook_node:main

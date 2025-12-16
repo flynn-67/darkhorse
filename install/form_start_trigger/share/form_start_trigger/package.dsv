@@ -1,0 +1,9 @@
+source;share/form_start_trigger/hook/pythonpath.ps1
+source;share/form_start_trigger/hook/pythonpath.dsv
+source;share/form_start_trigger/hook/pythonpath.sh
+source;share/form_start_trigger/hook/ament_prefix_path.ps1
+source;share/form_start_trigger/hook/ament_prefix_path.dsv
+source;share/form_start_trigger/hook/ament_prefix_path.sh
+source;../../build/form_start_trigger/share/form_start_trigger/hook/pythonpath_develop.ps1
+source;../../build/form_start_trigger/share/form_start_trigger/hook/pythonpath_develop.dsv
+source;../../build/form_start_trigger/share/form_start_trigger/hook/pythonpath_develop.sh

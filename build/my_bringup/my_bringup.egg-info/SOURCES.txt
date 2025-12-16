@@ -1,0 +1,13 @@
+package.xml
+setup.cfg
+setup.py
+launch/qr_launch.py
+launch/system.launch.py
+my_bringup/__init__.py
+my_bringup.egg-info/PKG-INFO
+my_bringup.egg-info/SOURCES.txt
+my_bringup.egg-info/dependency_links.txt
+my_bringup.egg-info/requires.txt
+my_bringup.egg-info/top_level.txt
+my_bringup.egg-info/zip-safe
+resource/my_bringup

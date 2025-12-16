@@ -7,35 +7,45 @@ from modules.base_bt_nodes import (
 )
 from modules.base_bt_nodes_ros import ActionWithROSAction, ConditionWithROSTopics
 
+# ROS 2 Messages
 from limo_interfaces.action import Speak as speakActionMsg
-from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String, Bool
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
 from nav_msgs.msg import Odometry
 
+
+# ==========================================
+# 상수 및 좌표 정의
+# ==========================================
 INFO_DESK_NAME = "안내데스크"
 
+# 좌표 설정 (환경에 맞게 수정 필요)
 DEPARTMENT_COORDINATES = {
-    "진단검사의학과": {"x": 0.48070189356803894, "y": 0.2762919068336487, "w": 1.0},
-    "영상의학과":    {"x": 6.578537940979004,  "y": 2.621462106704712,  "w": 1.0},
-    "내과":          {"x": 7.445363998413086,  "y": 0.5102964639663696, "w": 1.0},
-    "정형외과":      {"x": 0.753912627696991,  "y": -2.640972375869751, "w": 1.0},
-    "안내데스크":    {"x": 2.836460590362549,  "y": 1.1752597093582153, "w": 1.0},
+    "진단검사의학과": {"x": -2.0478696823120117, "y": 1.3148077726364136, "w": 1.0},
+    "정형외과":      {"x": 4.325248718261719, "y": -1.067739486694336, "w": 1.0},
+    "안내데스크":    {"x": 0.08828259259462357, "y": 0.08828259259462357, "w": 1.0},
 }
-DEFAULT_DEPARTMENTS = ["진단검사의학과", "영상의학과", "내과", "정형외과"]
+DEFAULT_DEPARTMENTS = ["진단검사의학과", "정형외과"]
 
-# ---------------- HELPER: UI 상태 전송 ----------------
 def publish_ui_status(ros_node, text):
     pub = ros_node.create_publisher(String, '/hospital/nav_status', 10)
     msg = String()
     msg.data = text
     pub.publish(msg)
 
+
+# ==========================================
+# Action Nodes
+# ==========================================
 class GoToInfoDesk(ActionWithROSAction):
+    """안내데스크로 이동 (타임아웃 60초 + 비상 시 강제 성공)"""
     def __init__(self, name, agent):
         super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
-    
+        self.timeout_sec = 60.0
+        self.start_time = None
+        self.nav_goal_sent = False
+
     def _build_goal(self, agent, bb):
         coords = DEPARTMENT_COORDINATES.get(INFO_DESK_NAME)
         if not coords: return None
@@ -44,17 +54,49 @@ class GoToInfoDesk(ActionWithROSAction):
         goal.pose.header.stamp = self.ros.node.get_clock().now().to_msg()
         goal.pose.pose.position.x = float(coords['x'])
         goal.pose.pose.position.y = float(coords['y'])
-        goal.pose.pose.orientation.w = float(coords['w'])
+        goal.pose.pose.orientation.w = float(coords.get('w', 1.0))
+
         publish_ui_status(self.ros.node, "안내데스크 복귀 중 🏠")
+        print("[GoToInfoDesk] 🏠 안내데스크로 복귀 시작")
+        
+        self.start_time = self.ros.node.get_clock().now()
+        self.nav_goal_sent = True
         return goal
 
+    async def run(self, agent, bb):
+        status = await super().run(agent, bb)
+        
+        # 타임아웃 체크 (60초)
+        if status == Status.RUNNING and self.nav_goal_sent:
+            now = self.ros.node.get_clock().now()
+            elapsed_time = (now - self.start_time).nanoseconds / 1e9
+            
+            if elapsed_time > self.timeout_sec:
+                print(f"[GoToInfoDesk] ⚠️ 60초 타임아웃! 강제 종료.")
+                if self._action_client and self._goal_handle:
+                    self._action_client.cancel_goal_async(self._goal_handle)
+                self.nav_goal_sent = False
+                return Status.SUCCESS # 강제 성공 반환
+            
+        return status
+
     def _interpret_result(self, result, agent, bb, status_code=None):
+        self.nav_goal_sent = False
         if status_code == GoalStatus.STATUS_SUCCEEDED:
-            publish_ui_status(self.ros.node, "안내데스크 도착 완료")
+            print("[GoToInfoDesk] ✅ 도착 완료")
             return Status.SUCCESS
+        
+        if bb.get('abort', False):
+            print(f"[GoToInfoDesk] ⚠️ 비상 상황: 이동 실패했으나 성공 처리")
+            publish_ui_status(self.ros.node, "복귀 완료 (강제)")
+            return Status.SUCCESS
+            
+        print(f"[GoToInfoDesk] ❌ 이동 실패 (Code: {status_code})")
         return Status.FAILURE
 
+
 class WaitForQR(SyncAction):
+    """QR 대기 및 상태 초기화"""
     def __init__(self, name, agent):
         super().__init__(name, self._tick)
         self.agent = agent
@@ -69,22 +111,27 @@ class WaitForQR(SyncAction):
     def _tick(self, agent, bb):
         if self.first_run:
             publish_ui_status(agent.ros_bridge.node, "환자 접수 대기 중... 📋")
+            bb['abort'] = False  # ✅ 비상 상태 리셋
             self.first_run = False
+
         if self.done: return Status.SUCCESS
         if not self.home_saved:
             if hasattr(agent, 'robot_pose') and agent.robot_pose is not None:
                 bb['home_pose'] = agent.robot_pose
                 self.home_saved = True
+
         if self.received_msg is None: return Status.RUNNING
+
         try:
             data = json.loads(self.received_msg.data)
             bb['patient_id'] = data.get("patient_id", "Unknown")
-            raw_depts = data.get("departments", None)
-            if not raw_depts: raw_depts = DEFAULT_DEPARTMENTS
+            raw_depts = data.get("departments", DEFAULT_DEPARTMENTS)
             depts = [d for d in raw_depts if (d in DEPARTMENT_COORDINATES) and (d != INFO_DESK_NAME)]
+
             bb['department_queue'] = list(depts)
-            bb['remaining_depts']  = list(depts)
+            bb['remaining_depts'] = list(depts)
             bb['speak_text'] = "접수가 완료되었습니다."
+
             self.received_msg = None
             self.done = True
             publish_ui_status(agent.ros_bridge.node, f"환자 {bb['patient_id']} 접수 완료 ✅")
@@ -93,42 +140,37 @@ class WaitForQR(SyncAction):
             self.received_msg = None
             return Status.RUNNING
 
-class IsEmergencyPressed(ConditionWithROSTopics):
-    def __init__(self, name, agent, **kwargs):
-        super().__init__(name, agent, [(Bool, "/emergency_trigger", "emergency_flag")], **kwargs)
-    async def run(self, agent, bb):
-        if "emergency_flag" not in self._cache: return Status.FAILURE
-        return Status.SUCCESS if self._cache["emergency_flag"].data else Status.FAILURE
-
-class IsBatteryLow(ConditionWithROSTopics):
-    def __init__(self, name, agent): super().__init__(name, agent, [(Bool, "/battery_low", "battery_flag")])
-    def _predicate(self, agent, bb):
-        if "battery_flag" in self._cache and self._cache["battery_flag"].data: return True
-        return False
 
 class Think(SyncAction):
     def __init__(self, name, agent):
         super().__init__(name, self._tick)
         self.wait_min = 0; self.wait_max = 20
+
     def _tick(self, agent, bb):
         remaining = bb.get('remaining_depts', []) or []
         if INFO_DESK_NAME in remaining: remaining = [d for d in remaining if d != INFO_DESK_NAME]
+        
+        # ✅ 갈 곳이 없으면 FAILURE 반환 (루프 종료 신호)
         if len(remaining) == 0: return Status.FAILURE
+
         waiting_counts = {d: random.randint(self.wait_min, self.wait_max) for d in remaining}
         min_wait = min(waiting_counts.values())
         candidates = [d for d, w in waiting_counts.items() if w == min_wait]
         next_dept = random.choice(candidates)
+
         coords = DEPARTMENT_COORDINATES.get(next_dept)
         if not coords:
             remaining.remove(next_dept)
             bb['remaining_depts'] = remaining
             return Status.RUNNING
+
         bb['current_target_name'] = next_dept
         bb['current_target_coords'] = coords
         remaining.remove(next_dept)
         bb['remaining_depts'] = remaining
         bb['speak_text'] = f"{next_dept}로 이동할게요."
         return Status.SUCCESS
+
 
 class Move(ActionWithROSAction):
     def __init__(self, name, agent): super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
@@ -141,7 +183,7 @@ class Move(ActionWithROSAction):
         goal.pose.header.stamp = self.ros.node.get_clock().now().to_msg()
         goal.pose.pose.position.x = float(coords['x'])
         goal.pose.pose.position.y = float(coords['y'])
-        goal.pose.pose.orientation.w = 1.0
+        goal.pose.pose.orientation.w = float(coords.get('w', 1.0))
         publish_ui_status(self.ros.node, f"{target_name} 이동 중 🚑")
         return goal
     def _interpret_result(self, result, agent, bb, status_code=None):
@@ -149,8 +191,9 @@ class Move(ActionWithROSAction):
         if status_code == GoalStatus.STATUS_SUCCEEDED:
             bb['speak_text'] = f"{target_name}에 도착했습니다."
             return Status.SUCCESS
-        bb['speak_text'] = f"{target_name} 이동 실패."
+        bb['speak_text'] = f"{target_name}로 이동하지 못했습니다."
         return Status.FAILURE
+
 
 class WaitDoctorDone(SyncAction):
     def __init__(self, name, agent):
@@ -170,18 +213,6 @@ class WaitDoctorDone(SyncAction):
         bb['speak_text'] = "진료 종료. 다음으로 이동."
         return Status.SUCCESS
 
-class ReturnHome(ActionWithROSAction):
-    def __init__(self, name, agent): super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
-    def _build_goal(self, agent, bb):
-        coords = DEPARTMENT_COORDINATES.get(INFO_DESK_NAME)
-        if not coords: return None
-        goal = NavigateToPose.Goal()
-        goal.pose.header.frame_id = "map"
-        goal.pose.header.stamp = self.ros.node.get_clock().now().to_msg()
-        goal.pose.pose.position.x = float(coords['x'])
-        goal.pose.pose.position.y = float(coords['y'])
-        goal.pose.pose.orientation.w = float(coords.get('w', 1.0))
-        return goal
 
 class SpeakAction(ActionWithROSAction):
     def __init__(self, name, agent): super().__init__(name, agent, (speakActionMsg, 'speak_text'))
@@ -191,6 +222,7 @@ class SpeakAction(ActionWithROSAction):
         goal = speakActionMsg.Goal()
         goal.text = text
         return goal
+
 
 class WaitSpeedOK(SyncAction):
     def __init__(self, name, agent):
@@ -210,18 +242,37 @@ class WaitSpeedOK(SyncAction):
         self._warned = False
         return Status.SUCCESS
 
+
+class IsEmergencyPressed(ConditionWithROSTopics):
+    def __init__(self, name, agent, **kwargs):
+        super().__init__(name, agent, [(Bool, "/emergency_trigger", "emergency_flag")], **kwargs)
+    async def run(self, agent, bb):
+        if bb.get('abort', False): return Status.SUCCESS # Latch
+        if "emergency_flag" not in self._cache: return Status.FAILURE
+        return Status.SUCCESS if self._cache["emergency_flag"].data else Status.FAILURE
+
+
+class IsBatteryLow(ConditionWithROSTopics):
+    def __init__(self, name, agent): super().__init__(name, agent, [(Bool, "/battery_low", "battery_flag")])
+    def _predicate(self, agent, bb):
+        return "battery_flag" in self._cache and self._cache["battery_flag"].data
+
+
 class SetAbort(SyncAction):
     def __init__(self, name, agent): super().__init__(name, self._tick)
     def _tick(self, agent, bb):
         bb['abort'] = True
         bb['speak_text'] = "비상 상황 발생! 복귀합니다."
+        print("[Abort] 🚨 비상 플래그 설정")
         return Status.SUCCESS
 
-class CheckAbort(SyncAction):
+
+# ✅ [NotAbort] 이름 유지 (XML과 통일)
+class NotAbort(SyncAction):
     def __init__(self, name, agent): super().__init__(name, self._tick)
     def _tick(self, agent, bb):
-        if bb.get('abort', False): return Status.FAILURE
-        return Status.SUCCESS
+        return Status.FAILURE if bb.get('abort', False) else Status.SUCCESS
+
 
 class SendDiagnosisEmail(SyncAction):
     def __init__(self, name, agent, topic="/hospital/send_diagnosis_email", **kwargs):
@@ -229,56 +280,66 @@ class SendDiagnosisEmail(SyncAction):
         self.ros = agent.ros_bridge
         self.pub = self.ros.node.create_publisher(String, topic, 10)
     def _tick(self, agent, bb):
-        payload = {"patient_id": bb.get("patient_id", "Unknown"), "email": bb.get("patient_email") or bb.get("email"), "request": "send_diagnosis_email"}
+        payload = {"patient_id": bb.get("patient_id", "Unknown"), "email": bb.get("patient_email"), "request": "send_diagnosis_email"}
         msg = String(); msg.data = json.dumps(payload, ensure_ascii=False)
         self.pub.publish(msg)
         return Status.SUCCESS
+
 
 class ControlSiren(SyncAction):
     def __init__(self, name, agent, enable=True, **kwargs):
         super().__init__(name, self._tick, **kwargs)
         self.ros = agent.ros_bridge
         self.pub = self.ros.node.create_publisher(Bool, "/cmd_siren", 10)
-        self.enable_siren = True
+        self.enable_siren = bool(enable)
         if 'enable' in kwargs:
             val = str(kwargs['enable']).lower()
             self.enable_siren = (val == 'true')
     def _tick(self, agent, bb):
         msg = Bool(); msg.data = self.enable_siren
         self.pub.publish(msg)
-        if self.enable_siren: publish_ui_status(self.ros.node, "🚨 비상 복귀 중!")
+        publish_ui_status(self.ros.node, f"🚨 사이렌 {'ON' if self.enable_siren else 'OFF'}")
         return Status.SUCCESS
 
-# ✅ [수정됨] 들여쓰기 오류 수정 완료
+
+class ReturnHome(ActionWithROSAction): # Placeholder for class compatibility
+    def __init__(self, name, agent): super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
+    def _build_goal(self, agent, bb): return None
+
+
+# ==========================================
+# Control Nodes (핵심 수정!)
+# ==========================================
 class KeepRunningUntilFailure(Node):
+    """자식이 Failure(루프 종료)를 반환하면 SUCCESS로 변환하여 다음 단계로 넘김"""
     def __init__(self, name, children=None):
         super().__init__(name)
-        # 이 줄이 __init__ 안에 확실히 들어와야 합니다!
         self.children = children if children is not None else []
 
     async def run(self, agent, bb):
         if not self.children: return Status.FAILURE
         status = await self.children[0].run(agent, bb)
-        if status == Status.FAILURE: return Status.FAILURE
+        
+        # ✅ 자식이 FAILURE(갈 곳 없음 or NotAbort) -> 루프 정상 종료(SUCCESS)
+        if status == Status.FAILURE:
+            return Status.SUCCESS
+            
+        # 자식이 SUCCESS -> 계속 반복(RUNNING)
         return Status.RUNNING
 
-# ✅ [수정됨] ForceSuccess는 생성자에서 children을 부모에게 넘겨줍니다
-class ForceSuccess(Node):
-    def __init__(self, name, children=None):
-        super().__init__(name)  # <--- 여기 수정됨 (children 제거)
-        self.children = children if children is not None else [] # <--- 여기서 수동으로 설정
 
-    async def run(self, agent, bb):
-        if not self.children: return Status.SUCCESS
-        status = await self.children[0].run(agent, bb)
-        if status == Status.RUNNING: return Status.RUNNING
-        return Status.SUCCESS
-
-# LIST REGISTRATION
-CUSTOM_ACTION_NODES = ['WaitForQR', 'SpeakAction', 'Think', 'WaitSpeedOK', 'Move', 'WaitDoctorDone', 'ReturnHome', 'GoToInfoDesk', 'SendDiagnosisEmail', 'SetAbort', 'CheckAbort', 'ControlSiren']
+# ==========================================
+# BT 노드 등록
+# ==========================================
+CUSTOM_ACTION_NODES = [
+    'WaitForQR', 'SpeakAction', 'Think', 'WaitSpeedOK', 'Move',
+    'WaitDoctorDone', 'ReturnHome', 'GoToInfoDesk', 'SendDiagnosisEmail',
+    'SetAbort', 'NotAbort', 'ControlSiren',
+]
 CUSTOM_CONDITION_NODES = ['IsEmergencyPressed', 'IsBatteryLow']
+
 BTNodeList.ACTION_NODES.extend(CUSTOM_ACTION_NODES)
 BTNodeList.CONDITION_NODES.extend(CUSTOM_CONDITION_NODES)
 BTNodeList.CONTROL_NODES.append('KeepRunningUntilFailure')
-BTNodeList.CONTROL_NODES.append('ForceSuccess')
-print(f"Registered Actions: {BTNodeList.ACTION_NODES}")
+
+print(f"✅ 커스텀 노드 등록 완료")

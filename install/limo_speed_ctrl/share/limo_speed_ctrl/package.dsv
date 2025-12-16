@@ -1,0 +1,9 @@
+source;share/limo_speed_ctrl/hook/pythonpath.ps1
+source;share/limo_speed_ctrl/hook/pythonpath.dsv
+source;share/limo_speed_ctrl/hook/pythonpath.sh
+source;share/limo_speed_ctrl/hook/ament_prefix_path.ps1
+source;share/limo_speed_ctrl/hook/ament_prefix_path.dsv
+source;share/limo_speed_ctrl/hook/ament_prefix_path.sh
+source;../../build/limo_speed_ctrl/share/limo_speed_ctrl/hook/pythonpath_develop.ps1
+source;../../build/limo_speed_ctrl/share/limo_speed_ctrl/hook/pythonpath_develop.dsv
+source;../../build/limo_speed_ctrl/share/limo_speed_ctrl/hook/pythonpath_develop.sh

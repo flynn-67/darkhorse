@@ -1,0 +1,13 @@
+package.xml
+setup.cfg
+setup.py
+hospital_setup/__init__.py
+hospital_setup/setup_node.py
+hospital_setup.egg-info/PKG-INFO
+hospital_setup.egg-info/SOURCES.txt
+hospital_setup.egg-info/dependency_links.txt
+hospital_setup.egg-info/entry_points.txt
+hospital_setup.egg-info/requires.txt
+hospital_setup.egg-info/top_level.txt
+hospital_setup.egg-info/zip-safe
+resource/hospital_setup

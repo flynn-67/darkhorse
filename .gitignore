@@ -1,6 +1,9 @@
+service_account.json
+service_account.json
+
+# build artifacts
 build/
 install/
 log/
-build/
-install/
-log/
+__pycache__/
+*.pyc

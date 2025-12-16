@@ -10,7 +10,7 @@ def generate_launch_description():
     # [사진 기반 경로 설정]
     nav_launch_pkg = 'wego'
     map_pkg = 'wego_2d_nav'
-    map_file_name = 'map_67.yaml' 
+    map_file_name = 'map_1765863656.yaml' 
     # =========================================================
 
     map_dir = os.path.join(

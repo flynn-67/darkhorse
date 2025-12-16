@@ -1,0 +1,1 @@
+/home/wego/wego_ws/src/darkhorse/build/smart_hospital_system/launch/hospital_system.launch.py

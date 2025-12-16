@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: hospital_setup
+Version: 0.0.0
+Summary: TODO: Package description
+Maintainer: flynn
+Maintainer-email: youdongoh67@gmail.com
+License: TODO: License declaration
+Requires-Dist: setuptools
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"

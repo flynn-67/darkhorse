@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: my_bringup
+Version: 0.0.0
+Summary: System Bringup Package
+Maintainer: wego
+Maintainer-email: wego@todo.todo
+License: TODO: License declaration
+Requires-Dist: setuptools

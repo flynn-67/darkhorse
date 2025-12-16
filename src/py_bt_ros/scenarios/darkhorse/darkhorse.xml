@@ -2,7 +2,9 @@
 <root BTCPP_format="4">
   <BehaviorTree ID="MainTree">
     <Sequence name="HospitalFlow">
+      
       <WaitForQR/> 
+      
       <SpeakAction/> 
 
       <KeepRunningUntilFailure name="VisitLoop">
@@ -12,13 +14,15 @@
 
           <ReactiveFallback name="EmergencyOrMove">
             <Sequence name="EmergencyReturn">
+              
               <IsEmergencyPressed/>
+              
               <ControlSiren enable="true"/>
               <SetAbort/>
               <SpeakAction/>
-              <ForceSuccess>
-                  <GoToInfoDesk/>
-              </ForceSuccess>
+              
+              <GoToInfoDesk/>
+              
               <ControlSiren enable="false"/>
             </Sequence>
 
@@ -28,7 +32,7 @@
             </ReactiveSequence>
           </ReactiveFallback>
 
-          <CheckAbort/>
+          <NotAbort/>
           <SpeakAction/>
           <WaitDoctorDone/>
           <SpeakAction/>
@@ -44,10 +48,11 @@
     <Action ID="WaitForQR"/> <Action ID="SpeakAction"/> <Action ID="Think"/>
     <Action ID="WaitSpeedOK"/> <Action ID="Move"/> <Action ID="ReturnHome"/>
     <Action ID="GoToInfoDesk"/> <Action ID="WaitDoctorDone"/> <Action ID="SendDiagnosisEmail"/>
-    <Action ID="SetAbort"/> <Action ID="CheckAbort"/>
+    <Action ID="SetAbort"/> <Action ID="NotAbort"/>
+    
     <Control ID="ReactiveSequence"/> <Condition ID="IsEmergencyPressed"/>
     <Control ID="KeepRunningUntilFailure"/> <Control ID="ReactiveFallback"/>
-    <Control ID="ForceSuccess"/>
+    
     <Action ID="ControlSiren"><input_port name="enable" type="bool"/></Action>
   </TreeNodesModel>
 </root>

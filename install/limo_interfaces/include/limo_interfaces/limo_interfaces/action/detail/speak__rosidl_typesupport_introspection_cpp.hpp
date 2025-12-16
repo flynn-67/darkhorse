@@ -1,0 +1,1 @@
+/home/wego/wego_ws/src/darkhorse/build/limo_interfaces/rosidl_typesupport_introspection_cpp/limo_interfaces/action/detail/speak__rosidl_typesupport_introspection_cpp.hpp
