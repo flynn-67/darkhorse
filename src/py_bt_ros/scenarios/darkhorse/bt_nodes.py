@@ -135,20 +135,29 @@ class Think(SyncAction):
         super().__init__(name, self._tick)
 
     def _ensure_waiting_sub(self, agent, bb):
-        # ✅ 최초 1회만 subscription 생성 (bb 참조를 여기서 잡아둠)
+        # 최초 1회만 subscription 생성
         if not hasattr(agent, "_waiting_board_sub"):
             agent._waiting_board_sub = WaitingBoardSub(agent.ros_bridge.node, bb)
             print("[Think] ✅ WaitingBoardSub attached (/hospital/waiting_board)")
 
     def _tick(self, agent, bb):
-        # ✅ 매 tick마다 호출해도, 내부에서 1회만 생성됨
         self._ensure_waiting_sub(agent, bb)
 
-        remaining = bb.get('remaining_depts', []) or []
-        if INFO_DESK_NAME in remaining:
-            remaining = [d for d in remaining if d != INFO_DESK_NAME]
+        # ✅ visited set 준비 (이미 갔던 과 기록)
+        visited = bb.get("visited_depts")
+        if not isinstance(visited, set):
+            visited = set(visited) if visited else set()
+            bb["visited_depts"] = visited
 
-        # ✅ 갈 곳이 없으면 FAILURE 반환 (루프 종료 신호)
+        remaining = bb.get('remaining_depts', []) or []
+
+        # 안내데스크는 목적지 후보에서 제외
+        remaining = [d for d in remaining if d != INFO_DESK_NAME]
+
+        # ✅ 이미 방문한 과 제외
+        remaining = [d for d in remaining if d not in visited]
+
+        # ✅ 갈 곳이 없으면 FAILURE (루프 종료 → 집/이메일)
         if len(remaining) == 0:
             return Status.FAILURE
 
@@ -163,7 +172,7 @@ class Think(SyncAction):
                 except:
                     pass
 
-        # 대기정보가 아직 없으면 fallback 랜덤
+        # 대기정보 없으면 랜덤 fallback
         if not candidates:
             next_dept = random.choice(remaining)
         else:
@@ -173,20 +182,23 @@ class Think(SyncAction):
 
         coords = DEPARTMENT_COORDINATES.get(next_dept)
         if not coords:
-            if next_dept in remaining:
-                remaining.remove(next_dept)
-            bb['remaining_depts'] = remaining
+            # 좌표 없는 과는 visited에 넣지 말고 그냥 제외만 하고 다시 Think에서 다음 tick에 고르게
+            # (원하면 여기서 바로 재선정 루프로 바꿀 수도 있음)
+            tmp = [d for d in remaining if d != next_dept]
+            bb['remaining_depts'] = tmp
             return Status.RUNNING
 
+        # ✅ 선택 확정 → bb에 목표 저장
         bb['current_target_name'] = next_dept
         bb['current_target_coords'] = coords
-        if next_dept in remaining:
-            remaining.remove(next_dept)
-        bb['remaining_depts'] = remaining
+
+        # ✅ “방문 예정/방문 완료 처리”를 언제 할지 결정해야 하는데,
+        # 가장 단순하게는 Think에서 바로 visited에 추가해도 OK (중복 방문 방지 목적)
+        visited.add(next_dept)
+        bb["visited_depts"] = visited
 
         bb['speak_text'] = f"{next_dept}로 이동할게요."
         return Status.SUCCESS
-
 
 WAITING_TOPIC = "/hospital/waiting_board"
 
@@ -252,22 +264,42 @@ class Move(ActionWithROSAction):
         bb['speak_text'] = f"{target_name}로 이동하지 못했습니다."
         return Status.FAILURE
 
+
 class WaitDoctorDone(SyncAction):
     def __init__(self, name, agent):
         super().__init__(name, self._tick)
+
         self._done = False
-        self.sub = agent.ros_bridge.node.create_subscription(Bool, "/hospital/doctor_input", self._cb, 10)
+        self._last_msg = False   # ✅ True가 계속 날아와도 1번만 반응(에지)
         self.status_sent = False
-    def _cb(self, msg: Bool): 
-        if msg.data is True: self._done = True
+
+        self.sub = agent.ros_bridge.node.create_subscription(
+            Bool,
+            "/hospital/doctor_input",
+            self._cb,
+            10
+        )
+
+    def _cb(self, msg: Bool):
+        cur = bool(msg.data)
+        if (cur is True) and (self._last_msg is False):
+            self._done = True
+        self._last_msg = cur
+
     def _tick(self, agent, bb):
+        # 진료중 상태 표시(1회)
         if not self.status_sent:
             target_name = bb.get('current_target_name', '진료과')
             publish_ui_status(agent.ros_bridge.node, f"{target_name} 진료 중... 👨‍⚕️")
             self.status_sent = True
-        if not self._done: return Status.RUNNING
-        self._done = False; self.status_sent = False
-        bb['speak_text'] = "진료 종료. 다음으로 이동."
+
+        if not self._done:
+            return Status.RUNNING
+
+        # ✅ “진료 완료” 받음 → SUCCESS만 반환
+        self._done = False
+        self.status_sent = False
+        bb['speak_text'] = "진료가 끝났습니다. 다음 진료로 이동합니다."
         return Status.SUCCESS
 
 class SpeakAction(ActionWithROSAction):
