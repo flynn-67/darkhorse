@@ -14,7 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         
         # Launch 파일
-        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
 
         # ✅ [추가 1] Resource 폴더 통째로 복사 (wav 파일 인식용)
         (os.path.join('share', package_name, 'resource'), glob('resource/*')),
