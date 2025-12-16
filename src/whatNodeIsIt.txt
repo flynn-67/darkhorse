@@ -5,3 +5,4 @@ hospital_setup : 초기 병원 설정
 smart_dispatcher : 주행기능
 bringup : 통합 런치
 qr_scanner : 리모가 큐알 인식하게 만들었음
+limo_frontend : 프로토타입핑 된 마지막 출력 노드. 접속방법 같은 네트워크 안에서 192.168.0.214:8501
