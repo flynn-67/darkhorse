@@ -1,5 +1,6 @@
 import json
 import random
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -13,20 +14,23 @@ from rcl_interfaces.msg import Parameter, ParameterValue
 
 
 DEPARTMENT_COORDINATES = {
-    "진단검사의학과": {"x": -2.0478696823120117, "y": 1.3148077726364136, "w": 1.0},
-    "정형외과":      {"x": 4.325248718261719, "y": -1.067739486694336, "w": 1.0},
-    "안내데스크":    {"x": 0.08828259259462357, "y": 0.08828259259462357, "w": 1.0},
+    "진단검사의학과": {"x": 0.48070189356803894, "y": 0.2762919068336487, "w": 1.0},
+    "영상의학과":    {"x": 6.578537940979004,  "y": 2.621462106704712,  "w": 1.0},
+    "내과":          {"x": 7.445363998413086,  "y": 0.5102964639663696, "w": 1.0},
+    "정형외과":      {"x": 0.753912627696991,  "y": -2.640972375869751, "w": 1.0},
+    "안내데스크":    {"x": 2.836460590362549,  "y": 1.1752597093582153, "w": 1.0},
 }
 INFO_DESK_NAME = "안내데스크"
 
 
 class SmartDispatcher(Node):
     """
-    /hospital/patient_data(JSON) -> departments 중에서 안내데스크는 제외하고 후보 생성
-    출발할 때마다 랜덤 대기인원 생성 -> 최소 대기인원 과로 이동
-    waypoint 도착 후 /hospital/next_waypoint(True) 오면 다음 출발
-
-    + 도착 성공 시 /hospital/arrival_status(String)에 현재 과 이름 publish (doctor_ui_trigger 등이 사용)
+    /hospital/patient_data(JSON) 수신 -> 안내데스크 제외한 과 리스트 생성 -> 최소 대기 인원 과로 이동
+    목적지 도착 -> /hospital/arrival_status(String) publish
+    의사 진료 완료 -> doctor_app.py가
+      - 다음 waypoint 있으면: /hospital/next_waypoint(True)
+      - 다음 waypoint 없으면: /hospital/return_home(True)
+    + doctor_app.py가 판단할 수 있도록 /hospital/has_next_waypoint(Bool) publish
     """
 
     def __init__(self):
@@ -43,6 +47,7 @@ class SmartDispatcher(Node):
         self.waiting_next = False
         self.is_paused = False
         self.is_emergency = False
+        self.is_returning_home = False   # ✅ return_home 진행 중인지
 
         # ---- home 저장 ----
         self.home_pose = None
@@ -53,30 +58,42 @@ class SmartDispatcher(Node):
 
         # ---- Nav2 ----
         self.navigator = BasicNavigator()
-        # Nav2가 올라오지 않았으면 여기서 대기함 (필요하면 시뮬 상황에 맞게 조절)
         try:
             self.navigator.waitUntilNav2Active()
         except Exception as e:
             self.get_logger().warn(f"waitUntilNav2Active() 예외: {e}")
 
-        # ---- 속도 (초기값 읽기) ----
+        # ---- 속도 ----
         self.current_speed = self._get_initial_speed_from_velocity_smoother()
         self.min_speed = 0.10
         self.max_speed = 0.40
 
-        # ---- 도착 알림용 토픽 ----
+        # ---- Pub ----
         self.pub_arrival_status = self.create_publisher(String, '/hospital/arrival_status', 10)
 
-        # ---- Sub (입력) ----
+        # ✅ doctor_app.py가 읽는 토픽
+        self.pub_has_next = self.create_publisher(Bool, '/hospital/has_next_waypoint', 10)
+
+        # ---- Sub ----
         self.create_subscription(String,  '/hospital/patient_data',   self.cb_patient_data, 10)
+
+        # 기존 next_waypoint 신호 유지
         self.create_subscription(Bool,    '/hospital/next_waypoint',  self.cb_next_waypoint, 10)
+
+        # ✅ doctor_app.py가 보내는 복귀 신호
+        self.create_subscription(Bool,    '/hospital/return_home',    self.cb_return_home, 10)
+
+        # ✅ (권장) 진료 완료 신호: 이 신호만으로도 다음/복귀 판단 가능하게 호환 추가
+        self.create_subscription(Bool,    '/hospital/doctor_input',   self.cb_doctor_input, 10)
+
         self.create_subscription(Float32, '/nav_speed_delta',         self.cb_speed, 10)
         self.create_subscription(Bool,    '/nav_pause',               self.cb_pause, 10)
         self.create_subscription(Bool,    '/nav_emergency_home',      self.cb_emergency_home, 10)
 
         self.get_logger().info("IDLE: QR 대기 중 (dispatcher ready)")
 
-        # ---- 주기 타이머: Nav2 완료 체크 ----
+        # ---- 주기 타이머 ----
+        self.last_has_next_pub = 0.0
         self.create_timer(0.1, self.loop)
 
     # ---------------- 콜백 ----------------
@@ -92,10 +109,6 @@ class SmartDispatcher(Node):
         self.get_logger().info("[dispatcher] Home pose saved")
 
     def cb_patient_data(self, msg: String):
-        """
-        QR 완료 후 patient_data(JSON) 수신하면 후보 리스트 세팅하고 첫 출발
-        안내데스크는 무조건 제외됨
-        """
         if self.is_emergency:
             self.get_logger().info("EMERGENCY: 복귀 중 (QR 무시)")
             return
@@ -113,28 +126,71 @@ class SmartDispatcher(Node):
         ]
 
         if not self.remaining_depts:
-            self.get_logger().info("IDLE: 이동할 waypoint 없음 (안내데스크는 후보에서 제외됨)")
+            self.get_logger().info("IDLE: 이동할 waypoint 없음 (안내데스크 제외)")
+            self._publish_has_next(False)
             return
 
         self.get_logger().info("READY: 첫 목적지 출발(최소 대기인원)")
         self.waiting_next = False
         self.is_paused = False
         self.is_emergency = False
+        self.is_returning_home = False
+
+        # 첫 출발 직전: 남은 waypoint 있음
+        self._publish_has_next(True)
 
         self._start_next_goal()
 
     def cb_next_waypoint(self, msg: Bool):
-        """
-        도착 후 대기 상태일 때만 다음 출발
-        """
+        if not msg.data:
+            return
+        if self.is_emergency or self.is_returning_home:
+            return
+        if self.waiting_next:
+            # 혹시 남은 waypoint가 없는데 next가 들어오면 -> 안내데스크 복귀
+            if not self.remaining_depts:
+                self.get_logger().info("DONE: 다음 waypoint 없음 -> 안내데스크 복귀")
+                self.waiting_next = False
+                self._go_to_info_desk(clear_state=True)
+                return
+
+            self.waiting_next = False
+            self.get_logger().info("MOVING: 다음 목적지 출발(최소 대기인원)")
+            self._start_next_goal()
+
+    def cb_return_home(self, msg: Bool):
+        """doctor_app.py에서 마지막이면 이 토픽을 True로 보냄"""
         if not msg.data:
             return
         if self.is_emergency:
             return
-        if self.waiting_next:
+
+        self.get_logger().info("RETURN_HOME: 안내데스크 복귀 요청 수신")
+        self.waiting_next = False
+        self.is_paused = False
+        self.navigator.cancelTask()
+        self._go_to_info_desk(clear_state=True)
+
+    def cb_doctor_input(self, msg: Bool):
+        """
+        doctor_app.py는 항상 doctor_input(True)를 보냄.
+        (UI가 next/return도 같이 보내지만, 이 토픽 하나만으로도 동작하도록 안전하게 호환)
+        """
+        if not msg.data:
+            return
+        if self.is_emergency or self.is_returning_home:
+            return
+        if not self.waiting_next:
+            return  # 도착해서 대기중일 때만 처리
+
+        if self.remaining_depts:
+            self.get_logger().info("DOCTOR_DONE: 다음 waypoint 존재 -> 출발")
             self.waiting_next = False
-            self.get_logger().info("MOVING: 다음 목적지 출발(최소 대기인원)")
             self._start_next_goal()
+        else:
+            self.get_logger().info("DOCTOR_DONE: 다음 waypoint 없음 -> 안내데스크 복귀")
+            self.waiting_next = False
+            self._go_to_info_desk(clear_state=True)
 
     def cb_speed(self, msg: Float32):
         self.current_speed = float(self.current_speed) + float(msg.data)
@@ -143,10 +199,6 @@ class SmartDispatcher(Node):
         self.get_logger().info(f"[speed] current_speed={self.current_speed:.2f}")
 
     def cb_pause(self, msg: Bool):
-        """
-        True: 정지(현재 task cancel)
-        False: 재개(현재 목표로 다시 goToPose)
-        """
         if msg.data:
             self.is_paused = True
             self.navigator.cancelTask()
@@ -158,9 +210,11 @@ class SmartDispatcher(Node):
         if self.is_emergency:
             self.get_logger().info("EMERGENCY: 복귀 중")
             return
-
+        if self.is_returning_home:
+            self.get_logger().info("RETURN_HOME: 복귀 중")
+            return
         if self.waiting_next:
-            self.get_logger().info("ARRIVED: 다음 신호 대기(/hospital/next_waypoint)")
+            self.get_logger().info("ARRIVED: 다음 신호 대기")
             return
 
         if self.current_goal_pose is not None:
@@ -170,15 +224,13 @@ class SmartDispatcher(Node):
             self.get_logger().info("IDLE")
 
     def cb_emergency_home(self, msg: Bool):
-        """
-        True면 즉시 멈추고 Home으로 복귀 (후보/목표 초기화)
-        """
         if not msg.data:
             return
 
         self.is_emergency = True
         self.is_paused = False
         self.waiting_next = False
+        self.is_returning_home = False
 
         self.remaining_depts = []
         self.waiting_counts = {}
@@ -199,7 +251,13 @@ class SmartDispatcher(Node):
 
     # ---------------- 메인 루프 ----------------
     def loop(self):
-        # emergency/home 복귀 중이면 완료 체크만
+        # ✅ 주기적으로 has_next_waypoint 방송 (UI가 안정적으로 받게)
+        now = time.time()
+        if now - self.last_has_next_pub > 0.3:
+            self._publish_has_next(len(self.remaining_depts) > 0)
+            self.last_has_next_pub = now
+
+        # emergency 복귀 완료 체크
         if self.is_emergency:
             if self.navigator.isTaskComplete():
                 res = self.navigator.getResult()
@@ -210,6 +268,19 @@ class SmartDispatcher(Node):
                 self.is_emergency = False
             return
 
+        # return_home(안내데스크) 복귀 완료 체크
+        if self.is_returning_home:
+            if self.navigator.isTaskComplete():
+                res = self.navigator.getResult()
+                if res == TaskResult.SUCCEEDED:
+                    self.get_logger().info("RETURN_HOME DONE: 안내데스크 도착 -> IDLE")
+                else:
+                    self.get_logger().info("RETURN_HOME DONE: 안내데스크 실패/취소")
+                self.is_returning_home = False
+                self.current_goal_name = None
+                self.current_goal_pose = None
+            return
+
         if self.is_paused or self.waiting_next:
             return
 
@@ -217,18 +288,24 @@ class SmartDispatcher(Node):
             res = self.navigator.getResult()
 
             if res == TaskResult.SUCCEEDED:
-                self.get_logger().info(f"ARRIVED: {self.current_goal_name} (next_waypoint 대기)")
-
-                # ✅ 도착 성공 방송
+                self.get_logger().info(f"ARRIVED: {self.current_goal_name} (doctor input 대기)")
                 m = String()
                 m.data = self.current_goal_name
                 self.pub_arrival_status.publish(m)
             else:
-                self.get_logger().info(f"FAILED: {self.current_goal_name} (next_waypoint 대기)")
+                self.get_logger().info(f"FAILED: {self.current_goal_name} (doctor input 대기)")
+
+            # ✅ 도착했으니 UI가 판단할 수 있게 has_next 즉시 갱신
+            self._publish_has_next(len(self.remaining_depts) > 0)
 
             self.waiting_next = True
 
     # ---------------- 내부 유틸 ----------------
+    def _publish_has_next(self, flag: bool):
+        msg = Bool()
+        msg.data = bool(flag)
+        self.pub_has_next.publish(msg)
+
     def _refresh_waiting_counts(self):
         self.waiting_counts = {
             d: random.randint(self.wait_min, self.wait_max)
@@ -239,7 +316,8 @@ class SmartDispatcher(Node):
         if not self.remaining_depts:
             self.current_goal_name = None
             self.current_goal_pose = None
-            self.get_logger().info("DONE: 모든 waypoint 완료")
+            self.get_logger().info("DONE: 모든 waypoint 완료 (UI가 return_home 보내면 안내데스크로 복귀)")
+            self._publish_has_next(False)
             return
 
         self._refresh_waiting_counts()
@@ -261,7 +339,31 @@ class SmartDispatcher(Node):
         self.current_goal_name = name
         self.current_goal_pose = pose
 
+        # ✅ 다음 목적지로 출발했으니 남은 waypoint 갱신
+        self._publish_has_next(len(self.remaining_depts) > 0)
+
         self.get_logger().info(f"MOVING: {name} (wait={self.waiting_counts.get(name)})")
+        self.navigator.goToPose(pose)
+
+    def _go_to_info_desk(self, clear_state: bool = False):
+        """안내데스크 좌표로 복귀"""
+        info = DEPARTMENT_COORDINATES[INFO_DESK_NAME]
+        pose = PoseStamped()
+        pose.header.frame_id = "map"
+        pose.header.stamp = self.get_clock().now().to_msg()
+        pose.pose.position.x = float(info["x"])
+        pose.pose.position.y = float(info["y"])
+        pose.pose.orientation.w = float(info.get("w", 1.0))
+
+        if clear_state:
+            self.remaining_depts = []
+            self.waiting_counts = {}
+            self._publish_has_next(False)
+
+        self.is_returning_home = True
+        self.current_goal_name = INFO_DESK_NAME
+        self.current_goal_pose = pose
+        self.get_logger().info("MOVING: 안내데스크 복귀")
         self.navigator.goToPose(pose)
 
     def _get_initial_speed_from_velocity_smoother(self) -> float:
