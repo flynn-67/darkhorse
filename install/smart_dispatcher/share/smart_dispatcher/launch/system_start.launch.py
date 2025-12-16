@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/build/smart_dispatcher/launch/system_start.launch.py
+/home/wego/wego_ws/src/darkhorse/build/smart_dispatcher/launch/system_start.launch.py

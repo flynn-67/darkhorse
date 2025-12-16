@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/build/limo_interfaces/rosidl_generator_py/limo_interfaces/action/_speak.py
+/home/wego/wego_ws/src/darkhorse/build/limo_interfaces/rosidl_generator_py/limo_interfaces/action/_speak.py

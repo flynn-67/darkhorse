@@ -1,9 +1,9 @@
 {
   "package_name": "limo_interfaces",
-  "output_dir": "/home/jinshim/darkhorse/build/limo_interfaces/rosidl_generator_cpp/limo_interfaces",
+  "output_dir": "/home/wego/wego_ws/src/darkhorse/build/limo_interfaces/rosidl_generator_cpp/limo_interfaces",
   "template_dir": "/opt/ros/humble/share/rosidl_generator_cpp/cmake/../resource",
   "idl_tuples": [
-    "/home/jinshim/darkhorse/build/limo_interfaces/rosidl_adapter/limo_interfaces:action/Speak.idl"
+    "/home/wego/wego_ws/src/darkhorse/build/limo_interfaces/rosidl_adapter/limo_interfaces:action/Speak.idl"
   ],
   "ros_interface_dependencies": [
     "action_msgs:/opt/ros/humble/share/action_msgs/msg/GoalInfo.idl",
@@ -30,7 +30,7 @@
     "/opt/ros/humble/share/rosidl_generator_cpp/cmake/../resource/srv__builder.hpp.em",
     "/opt/ros/humble/share/rosidl_generator_cpp/cmake/../resource/srv__struct.hpp.em",
     "/opt/ros/humble/share/rosidl_generator_cpp/cmake/../resource/srv__traits.hpp.em",
-    "/home/jinshim/darkhorse/build/limo_interfaces/rosidl_adapter/limo_interfaces/action/Speak.idl",
+    "/home/wego/wego_ws/src/darkhorse/build/limo_interfaces/rosidl_adapter/limo_interfaces/action/Speak.idl",
     "/opt/ros/humble/share/action_msgs/msg/GoalInfo.idl",
     "/opt/ros/humble/share/action_msgs/msg/GoalStatus.idl",
     "/opt/ros/humble/share/action_msgs/msg/GoalStatusArray.idl",

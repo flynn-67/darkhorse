@@ -1,12 +1,8 @@
 Metadata-Version: 2.1
-Name: qr-scanner
+Name: qr_scanner
 Version: 0.0.0
 Summary: QR Scanner Node for Patient Registration
-Home-page: UNKNOWN
 Maintainer: wego
 Maintainer-email: wego@todo.todo
 License: TODO: License declaration
-Platform: UNKNOWN
-
-UNKNOWN
-
+Requires-Dist: setuptools

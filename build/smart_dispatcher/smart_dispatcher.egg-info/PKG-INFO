@@ -1,12 +1,8 @@
 Metadata-Version: 2.1
-Name: smart-dispatcher
+Name: smart_dispatcher
 Version: 0.0.0
 Summary: Smart Dispatcher
-Home-page: UNKNOWN
 Maintainer: flynn
 Maintainer-email: flynn@todo.todo
 License: TODO
-Platform: UNKNOWN
-
-UNKNOWN
-
+Requires-Dist: setuptools

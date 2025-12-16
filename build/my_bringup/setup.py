@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/src/my_bringup/setup.py
+/home/wego/wego_ws/src/darkhorse/src/my_bringup/setup.py

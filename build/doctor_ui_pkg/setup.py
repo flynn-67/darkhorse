@@ -1,1 +1,0 @@
-/home/jinshim/darkhorse/src/doctor_ui_pkg/setup.py

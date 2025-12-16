@@ -3,4 +3,3 @@ dashboard_ui = smart_hospital_system.dashboard_ui:main
 doctor_ui = smart_hospital_system.doctor_ui:main
 patient_ui = smart_hospital_system.patient_ui:main
 qr_api_node = smart_hospital_system.qr_api_node:main
-

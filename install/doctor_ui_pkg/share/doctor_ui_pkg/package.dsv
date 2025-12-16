@@ -4,6 +4,3 @@ source;share/doctor_ui_pkg/hook/pythonpath.sh
 source;share/doctor_ui_pkg/hook/ament_prefix_path.ps1
 source;share/doctor_ui_pkg/hook/ament_prefix_path.dsv
 source;share/doctor_ui_pkg/hook/ament_prefix_path.sh
-source;../../build/doctor_ui_pkg/share/doctor_ui_pkg/hook/pythonpath_develop.ps1
-source;../../build/doctor_ui_pkg/share/doctor_ui_pkg/hook/pythonpath_develop.dsv
-source;../../build/doctor_ui_pkg/share/doctor_ui_pkg/hook/pythonpath_develop.sh

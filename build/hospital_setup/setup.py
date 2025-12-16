@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/src/hospital_setup/setup.py
+/home/wego/wego_ws/src/darkhorse/src/hospital_setup/setup.py

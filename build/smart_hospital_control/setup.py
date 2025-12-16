@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/src/smart_hospital_control/setup.py
+/home/wego/wego_ws/src/darkhorse/src/smart_hospital_control/setup.py

@@ -1,3 +1,3 @@
 # generated from colcon_powershell/shell/template/hook_prepend_value.ps1.em
 
-colcon_prepend_unique_value PYTHONPATH "$env:COLCON_CURRENT_PREFIX\/home/jinshim/darkhorse/build/limo_speed_ctrl"
+colcon_prepend_unique_value PYTHONPATH "$env:COLCON_CURRENT_PREFIX\/home/wego/wego_ws/src/darkhorse/build/limo_speed_ctrl"

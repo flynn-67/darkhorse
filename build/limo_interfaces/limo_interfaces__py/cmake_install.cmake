@@ -1,8 +1,8 @@
-# Install script for directory: /home/jinshim/darkhorse/build/limo_interfaces/limo_interfaces__py
+# Install script for directory: /home/wego/wego_ws/src/darkhorse/build/limo_interfaces/limo_interfaces__py
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/home/jinshim/darkhorse/install/limo_interfaces")
+  set(CMAKE_INSTALL_PREFIX "/home/wego/wego_ws/src/darkhorse/install/limo_interfaces")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 

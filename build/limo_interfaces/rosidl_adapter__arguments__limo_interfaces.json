@@ -1,6 +1,6 @@
 {
   "package_name": "limo_interfaces",
   "non_idl_tuples": [
-    "/home/jinshim/darkhorse/src/limo_interfaces:action/Speak.action"
+    "/home/wego/wego_ws/src/darkhorse/src/limo_interfaces:action/Speak.action"
   ]
 }

@@ -1,3 +1,2 @@
 [console_scripts]
 patient_ui = smart_hospital_control.patient_ui:main
-

@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/src/limo_tts/setup.py
+/home/wego/wego_ws/src/darkhorse/src/limo_tts/setup.py

@@ -1,3 +1,2 @@
 [console_scripts]
 doctor_ui_trigger = doctor_ui_pkg.doctor_ui_trigger:main
-

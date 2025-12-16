@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/src/qr_scanner/setup.py
+/home/wego/wego_ws/src/darkhorse/src/qr_scanner/setup.py

@@ -7,6 +7,7 @@ resource/smart_dispatcher
 smart_dispatcher/__init__.py
 smart_dispatcher/siren_node.py
 smart_dispatcher/smart_dispatcher_node.py
+smart_dispatcher/ui_node.py
 smart_dispatcher.egg-info/PKG-INFO
 smart_dispatcher.egg-info/SOURCES.txt
 smart_dispatcher.egg-info/dependency_links.txt

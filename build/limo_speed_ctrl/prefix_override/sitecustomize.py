@@ -1,4 +1,4 @@
 import sys
 if sys.prefix == '/usr':
     sys.real_prefix = sys.prefix
-    sys.prefix = sys.exec_prefix = '/home/jinshim/darkhorse/install/limo_speed_ctrl'
+    sys.prefix = sys.exec_prefix = '/home/wego/wego_ws/src/darkhorse/install/limo_speed_ctrl'

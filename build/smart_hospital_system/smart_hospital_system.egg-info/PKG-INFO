@@ -1,12 +1,8 @@
 Metadata-Version: 2.1
-Name: smart-hospital-system
+Name: smart_hospital_system
 Version: 0.0.1
 Summary: Smart hospital UI + QR API + doctor dashboard
-Home-page: UNKNOWN
 Maintainer: jinshim
 Maintainer-email: tlathwls0518@gmail.com
 License: Apache License 2.0
-Platform: UNKNOWN
-
-UNKNOWN
-
+Requires-Dist: setuptools

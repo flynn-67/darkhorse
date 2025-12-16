@@ -1,13 +1,10 @@
 Metadata-Version: 2.1
-Name: limo-speed-ctrl
+Name: limo_speed_ctrl
 Version: 0.0.0
 Summary: TODO: Package description
-Home-page: UNKNOWN
 Maintainer: flynn
 Maintainer-email: youdongoh67@gmail.com
 License: TODO: License declaration
-Platform: UNKNOWN
+Requires-Dist: setuptools
 Provides-Extra: test
-
-UNKNOWN
-
+Requires-Dist: pytest; extra == "test"

@@ -1,1 +1,1 @@
-/home/jinshim/darkhorse/build/my_bringup/launch/system.launch.py
+/home/wego/wego_ws/src/darkhorse/build/my_bringup/launch/system.launch.py
