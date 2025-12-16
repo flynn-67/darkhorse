@@ -1,6 +1,8 @@
 import math
 import json
 import random
+import rclpy
+from rclpy.node import Node
 from modules.base_bt_nodes import (
     BTNodeList, Status, SyncAction, Node,
     Sequence, Fallback, ReactiveSequence, ReactiveFallback, Parallel,
@@ -141,37 +143,96 @@ class WaitForQR(SyncAction):
             return Status.RUNNING
 
 
+WAITING_TOPIC = "/hospital/waiting_board"
+
 class Think(SyncAction):
     def __init__(self, name, agent):
         super().__init__(name, self._tick)
-        self.wait_min = 0; self.wait_max = 20
 
     def _tick(self, agent, bb):
         remaining = bb.get('remaining_depts', []) or []
-        if INFO_DESK_NAME in remaining: remaining = [d for d in remaining if d != INFO_DESK_NAME]
-        
-        # ✅ 갈 곳이 없으면 FAILURE 반환 (루프 종료 신호)
-        if len(remaining) == 0: return Status.FAILURE
+        if INFO_DESK_NAME in remaining:
+            remaining = [d for d in remaining if d != INFO_DESK_NAME]
 
-        waiting_counts = {d: random.randint(self.wait_min, self.wait_max) for d in remaining}
-        min_wait = min(waiting_counts.values())
-        candidates = [d for d, w in waiting_counts.items() if w == min_wait]
-        next_dept = random.choice(candidates)
+        # ✅ 갈 곳이 없으면 FAILURE 반환 → 루프 종료 신호
+        if len(remaining) == 0:
+            return Status.FAILURE
+
+        dept_wait = bb.get("dept_wait", {}) or {}
+
+        # ✅ remaining 중에서 "UI에서 받은 대기정보"가 있는 과만 후보로
+        candidates = []
+        for d in remaining:
+            if d in dept_wait:
+                try:
+                    w = int(dept_wait[d])
+                    candidates.append((d, w))
+                except:
+                    pass
+
+        # ✅ 토픽이 아직 안 들어왔거나 후보가 비면 fallback
+        if not candidates:
+            next_dept = random.choice(remaining)
+        else:
+            min_wait = min(w for _, w in candidates)
+            tied = [d for d, w in candidates if w == min_wait]
+            next_dept = random.choice(tied)
 
         coords = DEPARTMENT_COORDINATES.get(next_dept)
         if not coords:
-            remaining.remove(next_dept)
+            # 좌표 없으면 남은 목록에서 제외하고 다음 tick에서 재선정
+            if next_dept in remaining:
+                remaining.remove(next_dept)
             bb['remaining_depts'] = remaining
             return Status.RUNNING
 
         bb['current_target_name'] = next_dept
         bb['current_target_coords'] = coords
-        remaining.remove(next_dept)
+        if next_dept in remaining:
+            remaining.remove(next_dept)
         bb['remaining_depts'] = remaining
+
         bb['speak_text'] = f"{next_dept}로 이동할게요."
         return Status.SUCCESS
 
+class WaitingBoardSub(Node):
+    """
+    UI(전광판)에서 발행하는 /hospital/waiting_board 를 구독해서
+    블랙보드(bb)에 dept_wait / dept_queue를 반영해주는 노드
+    """
+    def __init__(self, bb):
+        super().__init__("waiting_board_sub")
+        self.bb = bb
+        self.create_subscription(String, WAITING_TOPIC, self.cb, 10)
 
+    def cb(self, msg):
+        try:
+            data = json.loads(msg.data)
+
+            dept_wait = data.get("dept_wait", {}) or {}
+            dept_queue = data.get("dept_queue", {}) or {}
+
+            # ✅ 타입 정리(혹시 값이 문자열로 오더라도)
+            cleaned_wait = {}
+            for k, v in dept_wait.items():
+                try:
+                    cleaned_wait[str(k)] = int(v)
+                except:
+                    continue
+
+            cleaned_queue = {}
+            for k, v in dept_queue.items():
+                if isinstance(v, list):
+                    cleaned_queue[str(k)] = [str(x) for x in v]
+                else:
+                    cleaned_queue[str(k)] = []
+
+            self.bb["dept_wait"] = cleaned_wait
+            self.bb["dept_queue"] = cleaned_queue
+            self.bb["waiting_ts"] = int(data.get("ts", 0))
+
+        except Exception as e:
+            self.get_logger().warn(f"bad waiting_board payload: {e}")
 class Move(ActionWithROSAction):
     def __init__(self, name, agent): super().__init__(name, agent, (NavigateToPose, '/navigate_to_pose'))
     def _build_goal(self, agent, bb):
