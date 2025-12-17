@@ -1,8 +1,14 @@
-limo_interfaces : limo_tts용 action 정의
-limo_tts : pyttsx3 사용 tts action server 노드
-py_bt_ros : python BT
-hospital_setup : 초기 병원 설정
-smart_dispatcher : 주행기능
-bringup : 통합 런치
-qr_scanner : 리모가 큐알 인식하게 만들었음
+doctor_ui_pkg : streamlit 기반 의사 GUI 노드
+form_start_trigger : google form에서 데이터 받아오는 노드
+hospital_setup : 초기 병원 설정 노드
 limo_frontend : 프로토타입핑 된 마지막 출력 노드. 접속방법 같은 네트워크 안에서 192.168.0.214:8501
+limo_interfaces : limo_tts용 action 정의
+limo_speed_ctrl : **inactive** 리모 속도 변경 노드
+limo_tts : pyttsx3 사용 tts action server 노드
+my_bringup : 통합 런치
+py_bt_ros : python BT
+qr_scanner : 리모가 큐알 인식하게 만드는 노드
+smart_dispatcher : 주행기능 노드
+smart_hospital_control : 환자 GUI 리모에서 출력 노드
+smart_hospital_system : **inactive**
+waiting_board_ui : public display 출력 node
